@@ -49,7 +49,7 @@
                         </div>
                         <div class="col-6">
                             <i class="bi bi-people me-1"></i>
-                            {{ TaskAssignment.query.filter_by(task_id=task.id).count() }}/{{ task.required_people }}人
+                            {{ task_assignments.get(task.id, 0) }}/{{ task.required_people }}人
                         </div>
                     </div>
                     

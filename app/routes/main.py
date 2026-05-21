@@ -330,7 +330,13 @@ def tasks():
     )
     
     tasks_list = pagination.items
-    
+
+    # 预计算每个任务的已抢单人数
+    from app.models import TaskAssignment
+    task_assignments = {}
+    for task in tasks_list:
+        task_assignments[task.id] = TaskAssignment.query.filter_by(task_id=task.id).count()
+
     # 任务类型
     task_types = [
         ('patrol', '巡逻任务'),
@@ -338,12 +344,13 @@ def tasks():
         ('emergency', '应急任务'),
         ('investigation', '调查任务')
     ]
-    
+
     return render_template('tasks.html',
                          tasks=tasks_list,
                          pagination=pagination,
                          task_types=task_types,
-                         current_type=task_type)
+                         current_type=task_type,
+                         task_assignments=task_assignments)
 
 
 @bp.route('/task/<int:id>')
