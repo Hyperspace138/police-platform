@@ -1,84 +1,57 @@
 {% extends "base.html" %}
 
-{% block title %}积分商城管理 - 群防群治智慧警务平台{% endblock %}
+{% block title %}积分商城管理{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
     <div class="row">
         <div class="col-lg-2 mb-4">
             <div class="list-group shadow">
-                <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action">
-                    <i class="bi bi-speedometer2 me-2"></i>仪表盘
-                </a>
-                <a href="{{ url_for('admin.users') }}" class="list-group-item list-group-item-action">
-                    <i class="bi bi-people me-2"></i>用户管理
-                </a>
-                <a href="{{ url_for('admin.admin_rewards') }}" class="list-group-item list-group-item-action">
-                    <i class="bi bi-cash-coin me-2"></i>悬赏令
-                </a>
-                <a href="{{ url_for('admin.admin_clues') }}" class="list-group-item list-group-item-action">
-                    <i class="bi bi-file-earmark-text me-2"></i>线索管理
-                </a>
-                <a href="{{ url_for('admin.admin_hazards') }}" class="list-group-item list-group-item-action">
-                    <i class="bi bi-exclamation-triangle me-2"></i>隐患管理
-                </a>
-                <a href="{{ url_for('admin.admin_tasks') }}" class="list-group-item list-group-item-action">
-                    <i class="bi bi-list-check me-2"></i>任务管理
-                </a>
-                <a href="{{ url_for('admin.emergency_dispatch') }}" class="list-group-item list-group-item-action">
-                    <i class="bi bi-broadcast me-2"></i>应急调度
-                </a>
-                <a href="{{ url_for('admin.admin_announcements') }}" class="list-group-item list-group-item-action">
-                    <i class="bi bi-megaphone me-2"></i>公告管理
-                </a>
-                <a href="{{ url_for('admin.reward_items') }}" class="list-group-item list-group-item-action active">
-                    <i class="bi bi-gift me-2"></i>积分商城
-                </a>
+                <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action"><i class="bi bi-speedometer2 me-2"></i>仪表盘</a>
+                <a href="{{ url_for('admin.users') }}" class="list-group-item list-group-item-action"><i class="bi bi-people me-2"></i>用户管理</a>
+                <a href="{{ url_for('admin.admin_rewards') }}" class="list-group-item list-group-item-action"><i class="bi bi-cash-coin me-2"></i>悬赏令</a>
+                <a href="{{ url_for('admin.admin_clues') }}" class="list-group-item list-group-item-action"><i class="bi bi-file-earmark-text me-2"></i>线索管理</a>
+                <a href="{{ url_for('admin.admin_hazards') }}" class="list-group-item list-group-item-action"><i class="bi bi-exclamation-triangle me-2"></i>隐患管理</a>
+                <a href="{{ url_for('admin.admin_tasks') }}" class="list-group-item list-group-item-action"><i class="bi bi-list-check me-2"></i>任务管理</a>
+                <a href="{{ url_for('admin.emergency_dispatch') }}" class="list-group-item list-group-item-action"><i class="bi bi-broadcast me-2"></i>应急调度</a>
+                <a href="{{ url_for('admin.admin_announcements') }}" class="list-group-item list-group-item-action"><i class="bi bi-megaphone me-2"></i>公告管理</a>
+                <a href="{{ url_for('admin.reward_items') }}" class="list-group-item list-group-item-action active"><i class="bi bi-gift me-2"></i>积分商城</a>
+                <a href="{{ url_for('admin.settings') }}" class="list-group-item list-group-item-action"><i class="bi bi-gear me-2"></i>系统设置</a>
             </div>
         </div>
 
         <div class="col-lg-10">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h3><i class="bi bi-gift me-2"></i>积分商品管理</h3>
-                <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#addItemModal">
+                <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#editModal" onclick="prepareAdd()">
                     <i class="bi bi-plus-circle me-1"></i>添加商品
                 </button>
             </div>
 
-            <!-- 商品列表 -->
             <div class="card shadow">
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle">
                             <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>商品名称</th>
-                                    <th>所需积分</th>
-                                    <th>库存</th>
-                                    <th>状态</th>
-                                    <th>操作</th>
-                                </tr>
+                                <tr><th>ID</th><th>商品名称</th><th>描述</th><th>所需积分</th><th>库存</th><th>状态</th><th>操作</th></tr>
                             </thead>
                             <tbody>
                                 {% for item in items %}
                                 <tr>
                                     <td>{{ item.id }}</td>
-                                    <td>{{ item.name }}</td>
-                                    <td>{{ item.required_points }}</td>
+                                    <td><strong>{{ item.name }}</strong></td>
+                                    <td><small class="text-muted">{{ item.description or '无描述' }}</small></td>
+                                    <td><span class="text-warning fw-bold">{{ item.required_points }}</span></td>
                                     <td>{{ item.stock }}</td>
+                                    <td><span class="badge bg-{{ 'success' if item.is_active else 'secondary' }}">{{ '上架' if item.is_active else '下架' }}</span></td>
                                     <td>
-                                        <span class="badge bg-{{ 'success' if item.is_active else 'secondary' }}">
-                                            {{ '上架' if item.is_active else '下架' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary" onclick="editItem({{ item.id }})"><i class="bi bi-pencil"></i></button>
-                                        <button class="btn btn-sm btn-outline-{{ 'success' if not item.is_active else 'secondary' }}" onclick="toggleItem({{ item.id }})">
-                                            {{ '上架' if not item.is_active else '下架' }}
-                                        </button>
+                                        <button class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal" data-bs-target="#editModal" onclick="prepareEdit({{ item.id }}, '{{ item.name }}', '{{ item.description or '' }}', {{ item.required_points }}, {{ item.stock }})"><i class="bi bi-pencil"></i> 编辑</button>
+                                        <button class="btn btn-sm btn-outline-{{ 'secondary' if item.is_active else 'success' }} me-1" onclick="toggleItem({{ item.id }})">{{ '下架' if item.is_active else '上架' }}</button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteItem({{ item.id }})"><i class="bi bi-trash"></i></button>
                                     </td>
                                 </tr>
+                                {% else %}
+                                <tr><td colspan="7" class="text-center py-4 text-muted">暂无商品数据，请添加商品</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -89,36 +62,21 @@
     </div>
 </div>
 
-<!-- 添加商品模态框 -->
-<div class="modal fade" id="addItemModal" tabindex="-1">
+<!-- 编辑/添加商品模态框 -->
+<div class="modal fade" id="editModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST" action="{{ url_for('admin.create_reward_item') }}">
-                <div class="modal-header">
-                    <h5 class="modal-title">添加积分商品</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
+            <form id="itemForm" method="POST">
+                <div class="modal-header"><h5 class="modal-title" id="modalTitle">添加商品</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">商品名称</label>
-                        <input type="text" class="form-control" name="name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">描述</label>
-                        <textarea class="form-control" name="description" rows="2"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">所需积分</label>
-                        <input type="number" class="form-control" name="required_points" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">库存</label>
-                        <input type="number" class="form-control" name="stock" required>
-                    </div>
+                    <div class="mb-3"><label class="form-label">商品名称</label><input type="text" class="form-control" name="name" id="itemName" required></div>
+                    <div class="mb-3"><label class="form-label">描述</label><textarea class="form-control" name="description" id="itemDesc" rows="2"></textarea></div>
+                    <div class="mb-3"><label class="form-label">所需积分</label><input type="number" class="form-control" name="required_points" id="itemPoints" required min="1"></div>
+                    <div class="mb-3"><label class="form-label">库存</label><input type="number" class="form-control" name="stock" id="itemStock" required min="0"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-primary">添加</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
                 </div>
             </form>
         </div>
@@ -128,12 +86,39 @@
 
 {% block extra_js %}
 <script>
-function toggleItem(id) {
-    // 需要实现切换商品状态的路由，此处为示例
-    alert('请在后端实现切换状态接口');
+var editId = null;
+
+function prepareAdd() {
+    editId = null;
+    document.getElementById('modalTitle').textContent = '添加商品';
+    document.getElementById('itemForm').action = '/admin/reward-item/create';
+    document.getElementById('itemName').value = '';
+    document.getElementById('itemDesc').value = '';
+    document.getElementById('itemPoints').value = '';
+    document.getElementById('itemStock').value = '';
 }
-function editItem(id) {
-    alert('请在后端实现编辑商品接口');
+
+function prepareEdit(id, name, desc, points, stock) {
+    editId = id;
+    document.getElementById('modalTitle').textContent = '编辑商品 #' + id;
+    document.getElementById('itemForm').action = '/admin/reward-item/' + id + '/edit';
+    document.getElementById('itemName').value = name;
+    document.getElementById('itemDesc').value = desc;
+    document.getElementById('itemPoints').value = points;
+    document.getElementById('itemStock').value = stock;
+}
+
+function toggleItem(id) {
+    if (!confirm('确定要切换该商品的上下架状态吗？')) return;
+    fetch('/admin/reward-item/' + id + '/toggle', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) { if (data.success) location.reload(); });
+}
+
+function deleteItem(id) {
+    if (!confirm('确定要删除该商品吗？此操作不可恢复！')) return;
+    fetch('/admin/reward-item/' + id + '/delete', { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'} })
+        .then(function() { location.reload(); });
 }
 </script>
 {% endblock %}

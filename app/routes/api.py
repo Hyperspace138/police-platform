@@ -639,7 +639,7 @@ def get_leaderboard():
     limit = request.args.get('limit', 20, type=int)
     role = request.args.get('role', '')
 
-    query = User.query.filter_by(is_active=True)
+    query = User.query.filter(User.is_active == True, User.role != 'admin')
     if role:
         query = query.filter_by(role=role)
 

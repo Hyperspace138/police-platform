@@ -351,8 +351,7 @@ def tasks():
 def task_detail(id):
     """任务详情"""
     task = Task.query.get_or_404(id)
-    
-    # 检查用户是否已接单
+
     has_assigned = False
     assignment = None
     if current_user.is_authenticated:
@@ -361,11 +360,13 @@ def task_detail(id):
             user_id=current_user.id
         ).first()
         has_assigned = assignment is not None
-    
+
     return render_template('task_detail.html',
                          task=task,
                          has_assigned=has_assigned,
-                         assignment=assignment)
+                         assignment=assignment,
+                         amap_key=current_app.config['AMAP_KEY'],
+                         amap_security_code=current_app.config.get('AMAP_SECURITY_CODE', ''))
 
 
 @bp.route('/task/<int:id>/claim', methods=['POST'])
@@ -615,10 +616,12 @@ def volunteer_register():
 
 @bp.route('/leaderboard')
 def leaderboard():
-    """积分排行榜"""
+    """积分排行榜 - 管理员不参与排行"""
     from app.models import User
-    top_users = User.query.filter_by(is_active=True).\
-        order_by(User.total_points.desc()).limit(50).all()
+    top_users = User.query.filter(
+        User.is_active == True,
+        User.role != 'admin'
+    ).order_by(User.total_points.desc()).limit(50).all()
     return render_template('leaderboard.html', users=top_users)
 
 

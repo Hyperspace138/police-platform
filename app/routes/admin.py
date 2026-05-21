@@ -14,6 +14,7 @@ from app.models import (
 from sqlalchemy import desc, func
 from datetime import datetime, timedelta
 import json
+import uuid
 
 bp = Blueprint('admin', __name__)
 
@@ -552,7 +553,7 @@ def admin_announcements():
 @login_required
 @admin_required
 def create_announcement():
-    """创建公告"""
+    """创建公告 - 支持图片上传"""
     if request.method == 'POST':
         announcement = Announcement(
             title=request.form.get('title'),
@@ -561,14 +562,75 @@ def create_announcement():
             is_pinned=request.form.get('is_pinned') == 'on',
             published_by=current_user.id
         )
-        
+
+        # 处理封面图片上传（安全验证）
+        if 'cover_image' in request.files:
+            file = request.files['cover_image']
+            if file and file.filename:
+                from werkzeug.utils import secure_filename
+                import os
+                # 验证文件扩展名（仅允许图片格式）
+                allowed_ext = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+                ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+                if ext not in allowed_ext:
+                    flash('仅支持 PNG/JPG/JPEG/GIF/WEBP 图片格式', 'danger')
+                    return redirect(url_for('admin.create_announcement'))
+                # 验证MIME类型
+                import mimetypes
+                mime = mimetypes.guess_type(file.filename)[0] or ''
+                if not mime.startswith('image/'):
+                    flash('文件类型不安全，仅允许上传图片', 'danger')
+                    return redirect(url_for('admin.create_announcement'))
+                # 生成安全文件名（不带原始扩展名，统一用安全扩展名）
+                safe_name = f"cover_{datetime.now().strftime('%Y%m%d%H%M%S')}_{str(uuid.uuid4())[:8]}.{ext}"
+                file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'announcements', safe_name)
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                file.save(file_path)
+                announcement.cover_image = f'uploads/announcements/{safe_name}'
+
         db.session.add(announcement)
         db.session.commit()
-        
         flash('公告发布成功', 'success')
         return redirect(url_for('admin.admin_announcements'))
-    
+
     return render_template('admin/create_announcement.html')
+
+
+@bp.route('/announcement/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_announcement(id):
+    """编辑公告"""
+    announcement = Announcement.query.get_or_404(id)
+    if request.method == 'POST':
+        announcement.title = request.form.get('title')
+        announcement.content = request.form.get('content')
+        announcement.category = request.form.get('category', 'notice')
+        announcement.is_pinned = request.form.get('is_pinned') == 'on'
+
+        # 处理封面图片更新
+        if 'cover_image' in request.files:
+            file = request.files['cover_image']
+            if file and file.filename:
+                from werkzeug.utils import secure_filename
+                import os, mimetypes
+                allowed_ext = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+                ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+                mime = mimetypes.guess_type(file.filename)[0] or ''
+                if ext not in allowed_ext or not mime.startswith('image/'):
+                    flash('仅支持图片格式文件', 'danger')
+                    return redirect(url_for('admin.edit_announcement', id=id))
+                safe_name = f"cover_{datetime.now().strftime('%Y%m%d%H%M%S')}_{str(uuid.uuid4())[:8]}.{ext}"
+                file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'announcements', safe_name)
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                file.save(file_path)
+                announcement.cover_image = f'uploads/announcements/{safe_name}'
+
+        db.session.commit()
+        flash('公告已更新', 'success')
+        return redirect(url_for('admin.admin_announcements'))
+
+    return render_template('admin/edit_announcement.html', announcement=announcement)
 
 
 @bp.route('/announcement/<int:id>/delete', methods=['POST'])
@@ -579,7 +641,7 @@ def delete_announcement(id):
     announcement = Announcement.query.get_or_404(id)
     db.session.delete(announcement)
     db.session.commit()
-    
+
     flash('公告已删除', 'success')
     return redirect(url_for('admin.admin_announcements'))
 
@@ -606,11 +668,47 @@ def create_reward_item():
         required_points=request.form.get('required_points', 0, type=int),
         stock=request.form.get('stock', 0, type=int)
     )
-    
     db.session.add(item)
     db.session.commit()
-    
     flash('商品添加成功', 'success')
+    return redirect(url_for('admin.reward_items'))
+
+
+@bp.route('/reward-item/<int:id>/edit', methods=['POST'])
+@login_required
+@admin_required
+def edit_reward_item(id):
+    """编辑积分商品"""
+    item = RewardItem.query.get_or_404(id)
+    item.name = request.form.get('name', item.name)
+    item.description = request.form.get('description', item.description)
+    item.required_points = request.form.get('required_points', item.required_points, type=int)
+    item.stock = request.form.get('stock', item.stock, type=int)
+    db.session.commit()
+    flash('商品已更新', 'success')
+    return redirect(url_for('admin.reward_items'))
+
+
+@bp.route('/reward-item/<int:id>/toggle', methods=['POST'])
+@login_required
+@admin_required
+def toggle_reward_item(id):
+    """切换商品上下架"""
+    item = RewardItem.query.get_or_404(id)
+    item.is_active = not item.is_active
+    db.session.commit()
+    return jsonify({'success': True, 'is_active': item.is_active})
+
+
+@bp.route('/reward-item/<int:id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_reward_item(id):
+    """删除积分商品"""
+    item = RewardItem.query.get_or_404(id)
+    db.session.delete(item)
+    db.session.commit()
+    flash('商品已删除', 'success')
     return redirect(url_for('admin.reward_items'))
 
 
