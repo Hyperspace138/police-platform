@@ -8,8 +8,9 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for,
 from flask_login import login_required, current_user
 from app import db
 from app.models import (
-    Reward, Clue, Hazard, Task, Announcement, 
-    PatrolCheckin, EmergencyDispatch, RewardItem,User
+    Reward, Clue, Hazard, Task, Announcement,
+    PatrolCheckin, EmergencyDispatch, RewardItem, User,
+    TaskAssignment, RewardClaim
 )
 from sqlalchemy import desc, func
 from datetime import datetime, timedelta
@@ -332,7 +333,6 @@ def tasks():
     tasks_list = pagination.items
 
     # 预计算每个任务的已抢单人数
-    from app.models import TaskAssignment
     task_assignments = {}
     for task in tasks_list:
         task_assignments[task.id] = TaskAssignment.query.filter_by(task_id=task.id).count()
