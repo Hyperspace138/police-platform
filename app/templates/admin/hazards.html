@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}隐患管理 - 群防群治智慧警务平台{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-2 mb-4">
+            <div class="list-group shadow">
+                <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-speedometer2 me-2"></i>仪表盘
+                </a>
+                <a href="{{ url_for('admin.users') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-people me-2"></i>用户管理
+                </a>
+                <a href="{{ url_for('admin.admin_rewards') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-cash-coin me-2"></i>悬赏令
+                </a>
+                <a href="{{ url_for('admin.admin_clues') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-file-earmark-text me-2"></i>线索管理
+                </a>
+                <a href="{{ url_for('admin.admin_hazards') }}" class="list-group-item list-group-item-action active">
+                    <i class="bi bi-exclamation-triangle me-2"></i>隐患管理
+                </a>
+                <a href="{{ url_for('admin.admin_tasks') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-list-check me-2"></i>任务管理
+                </a>
+                <a href="{{ url_for('admin.emergency_dispatch') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-broadcast me-2"></i>应急调度
+                </a>
+                <a href="{{ url_for('admin.admin_announcements') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-megaphone me-2"></i>公告管理
+                </a>
+                <a href="{{ url_for('admin.reward_items') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-gift me-2"></i>积分商城
+                </a>
+            </div>
+        </div>
+
+        <div class="col-lg-10">
+            <h3 class="mb-4"><i class="bi bi-exclamation-triangle me-2"></i>隐患管理</h3>
+
+            <!-- 状态筛选 -->
+            <div class="card shadow mb-4">
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('admin.admin_hazards') }}" class="row">
+                        <div class="col-md-3">
+                            <select name="status" class="form-select" onchange="this.form.submit()">
+                                <option value="">全部状态</option>
+                                <option value="pending" {{ 'selected' if request.args.get('status')=='pending' else '' }}>待处理</option>
+                                <option value="processing" {{ 'selected' if request.args.get('status')=='processing' else '' }}>处理中</option>
+                                <option value="resolved" {{ 'selected' if request.args.get('status')=='resolved' else '' }}>已解决</option>
+                                <option value="ignored" {{ 'selected' if request.args.get('status')=='ignored' else '' }}>忽略</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 隐患列表 -->
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>编号</th>
+                                    <th>类型</th>
+                                    <th>描述</th>
+                                    <th>紧急程度</th>
+                                    <th>状态</th>
+                                    <th>上报人</th>
+                                    <th>上报时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for hazard in hazards %}
+                                <tr>
+                                    <td><code>{{ hazard.hazard_no }}</code></td>
+                                    <td>{{ hazard.hazard_type }}</td>
+                                    <td>{{ hazard.description[:30] }}...</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'danger' if hazard.urgency=='urgent' else 'warning' if hazard.urgency=='high' else 'secondary' }}">
+                                            {{ {'urgent':'紧急','high':'高','normal':'一般','low':'低'}.get(hazard.urgency, '一般') }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if hazard.status=='resolved' else 'primary' if hazard.status=='processing' else 'warning' }}">
+                                            {{ {'pending':'待处理','processing':'处理中','resolved':'已解决','ignored':'忽略'}.get(hazard.status, hazard.status) }}
+                                        </span>
+                                    </td>
+                                    <td>{{ hazard.reporter.username if hazard.reporter else '匿名' }}</td>
+                                    <td>{{ hazard.reported_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#handleHazardModal{{ hazard.id }}">
+                                            <i class="bi bi-pencil-square"></i> 处理
+                                        </button>
+                                    </td>
+                                </tr>
+                                <!-- 处理隐患模态框 -->
+                                <div class="modal fade" id="handleHazardModal{{ hazard.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form method="POST" action="{{ url_for('admin.handle_hazard', id=hazard.id) }}">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">处理隐患 #{{ hazard.hazard_no }}</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">操作</label>
+                                                        <select name="action" class="form-select" required>
+                                                            <option value="process">标记为处理中</option>
+                                                            <option value="resolve">标记为已解决</option>
+                                                            <option value="ignore">忽略</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">处理备注</label>
+                                                        <textarea name="notes" class="form-control" rows="3"></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                                    <button type="submit" class="btn btn-primary">确认</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 分页 -->
+                    {% if pagination.pages > 1 %}
+                    <nav class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if pagination.has_prev %}
+                            <li class="page-item"><a class="page-link" href="{{ url_for('admin.admin_hazards', page=pagination.prev_num, status=request.args.get('status')) }}">上一页</a></li>
+                            {% endif %}
+                            {% for p in pagination.iter_pages() %}
+                                {% if p %}
+                                <li class="page-item {{ 'active' if p == pagination.page else '' }}"><a class="page-link" href="{{ url_for('admin.admin_hazards', page=p, status=request.args.get('status')) }}">{{ p }}</a></li>
+                                {% else %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                {% endif %}
+                            {% endfor %}
+                            {% if pagination.has_next %}
+                            <li class="page-item"><a class="page-link" href="{{ url_for('admin.admin_hazards', page=pagination.next_num, status=request.args.get('status')) }}">下一页</a></li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

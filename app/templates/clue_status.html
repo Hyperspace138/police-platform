@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}线索查询 - 群防群治智慧警务平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- 查询表单 -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-search me-2"></i>线索查询</h4>
+                </div>
+                <div class="card-body p-4">
+                    <form method="GET" action="{{ url_for('main.clue_status') }}">
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label for="clue_no" class="form-label">线索编号</label>
+                                <input type="text" class="form-control" id="clue_no" name="clue_no" 
+                                       placeholder="如：XS20240101120000" value="{{ request.args.get('clue_no', '') }}">
+                            </div>
+                            <div class="col-md-5">
+                                <label for="anonymous_code" class="form-label">匿名查询码</label>
+                                <input type="text" class="form-control" id="anonymous_code" name="anonymous_code" 
+                                       placeholder="如：ABC123DEF456" value="{{ request.args.get('anonymous_code', '') }}">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-search me-1"></i>查询
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-text mt-2">
+                            提示：提交线索时会获得线索编号或匿名查询码，请妥善保存以便查询
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 查询结果 -->
+            {% if clue %}
+            <div class="card shadow">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>线索详情</h5>
+                    <span class="badge bg-light text-dark">{{ clue.clue_no }}</span>
+                </div>
+                <div class="card-body">
+                    <!-- 状态时间线 -->
+                    <div class="timeline mb-4">
+                        <h6 class="mb-3">处理进度</h6>
+                        <div class="d-flex justify-content-between position-relative">
+                            <div class="progress" style="height: 4px; position: absolute; top: 15px; left: 0; right: 0;">
+                                <div class="progress-bar bg-success" 
+                                     style="width: {{ {'submitted': '20%', 'reviewing': '40%', 'investigating': '60%', 'verified': '80%', 'closed': '100%', 'rewarded': '100%'}.get(clue.status, '0') }}"></div>
+                            </div>
+                            
+                            {% set steps = [
+                                ('submitted', '已提交', 'bi-send'),
+                                ('reviewing', '审核中', 'bi-eye'),
+                                ('investigating', '核查中', 'bi-search'),
+                                ('verified', '已核实', 'bi-check-circle'),
+                                ('closed', '已办结', 'bi-archive')
+                            ] %}
+                            
+                            {% for step, label, icon in steps %}
+                            <div class="text-center position-relative" style="z-index: 1;">
+                                <div class="rounded-circle bg-{{ 'success' if clue.status in ['submitted', 'reviewing', 'investigating', 'verified', 'closed', 'rewarded'] and 
+                                        (step == 'submitted' or 
+                                         (step == 'reviewing' and clue.status in ['reviewing', 'investigating', 'verified', 'closed', 'rewarded']) or
+                                         (step == 'investigating' and clue.status in ['investigating', 'verified', 'closed', 'rewarded']) or
+                                         (step == 'verified' and clue.status in ['verified', 'closed', 'rewarded']) or
+                                         (step == 'closed' and clue.status in ['closed', 'rewarded']))
+                                        else 'secondary' }} text-white d-flex align-items-center justify-content-center mx-auto" 
+                                     style="width: 35px; height: 35px;">
+                                    <i class="bi {{ icon }}"></i>
+                                </div>
+                                <small class="d-block mt-1">{{ label }}</small>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- 线索信息 -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>线索类型：</strong>{{ clue.clue_type or '一般线索' }}</p>
+                            <p><strong>提交时间：</strong>{{ clue.submitted_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                            <p><strong>当前状态：</strong>
+                                <span class="badge bg-{{ 'success' if clue.status == 'rewarded' else ('primary' if clue.status == 'closed' else 'warning') }}">
+                                    {{ config.CLUE_STATUS.get(clue.status, clue.status) }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            {% if clue.location %}
+                            <p><strong>位置：</strong>{{ clue.location }}</p>
+                            {% endif %}
+                            {% if clue.is_anonymous %}
+                            <p><strong>举报方式：</strong><span class="badge bg-secondary">匿名</span></p>
+                            <p><strong>查询码：</strong><code>{{ clue.anonymous_code }}</code></p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- 线索内容 -->
+                    <div class="mb-3">
+                        <h6>线索内容</h6>
+                        <div class="p-3 bg-light rounded">
+                            {{ clue.content }}
+                        </div>
+                    </div>
+                    
+                    <!-- 媒体文件 -->
+                    {% if clue.media_files and clue.media_files != '[]' %}
+                    <div class="mb-3">
+                        <h6>附件</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for file in clue.media_files | fromjson %}
+                            <a href="{{ url_for('static', filename=file) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-file-earmark me-1"></i>查看附件
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- 处理备注 -->
+                    {% if clue.handler_notes %}
+                    <div class="mb-3">
+                        <h6>处理备注</h6>
+                        <div class="p-3 bg-info bg-opacity-10 rounded">
+                            {{ clue.handler_notes }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- 奖励信息 -->
+                    {% if clue.status == 'rewarded' %}
+                    <div class="alert alert-success">
+                        <h6><i class="bi bi-gift me-2"></i>奖励信息</h6>
+                        {% if clue.reward_given > 0 %}
+                        <p class="mb-1">现金奖励：<strong class="text-danger">¥{{ "%.2f"|format(clue.reward_given) }}</strong></p>
+                        {% endif %}
+                        {% if clue.reward_points > 0 %}
+                        <p class="mb-0">积分奖励：<strong class="text-warning">+{{ clue.reward_points }}积分</strong></p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <!-- 提示信息 -->
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-search display-1 text-muted"></i>
+                    <p class="mt-3 text-muted">请输入线索编号或匿名查询码查询处理进度</p>
+                    <div class="mt-3">
+                        <a href="{{ url_for('main.submit_clue') }}" class="btn btn-primary">
+                            <i class="bi bi-plus me-1"></i>提交新线索
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

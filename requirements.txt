@@ -1,0 +1,23 @@
+# 群防群治智慧警务平台 - Python依赖
+
+# Web框架
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-Migrate==4.0.5
+Flask-Moment==1.0.5
+Flask-WTF==1.2.1
+
+# 数据库
+SQLAlchemy==2.0.23
+
+# 安全
+Werkzeug==3.0.1
+
+# 其他
+python-dotenv==1.0.0
+Pillow==10.1.0
+
+# 生产环境（可选）
+# gunicorn==21.2.0
+# pymysql==1.1.0

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}{{ announcement.title }} - 公告{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">首页</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.announcements') }}">公告</a></li>
+                    <li class="breadcrumb-item active">详情</li>
+                </ol>
+            </nav>
+            
+            <div class="card shadow">
+                {% if announcement.cover_image %}
+                <img src="{{ url_for('static', filename=announcement.cover_image) }}" 
+                     class="card-img-top" alt="封面" style="max-height: 300px; object-fit: cover;">
+                {% endif %}
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            {% if announcement.is_pinned %}
+                            <span class="badge bg-danger me-2">置顶</span>
+                            {% endif %}
+                            <span class="badge bg-secondary">{{ announcement.category }}</span>
+                        </div>
+                        <small class="text-muted">
+                            <i class="bi bi-eye me-1"></i>{{ announcement.view_count }} 浏览
+                        </small>
+                    </div>
+                    
+                    <h2 class="card-title mb-3">{{ announcement.title }}</h2>
+                    
+                    <div class="text-muted mb-4">
+                        <i class="bi bi-calendar me-1"></i>
+                        发布时间：{{ announcement.published_at.strftime('%Y年%m月%d日 %H:%M') }}
+                        {% if announcement.publisher %}
+                        <span class="ms-3">
+                            <i class="bi bi-person me-1"></i>
+                            发布人：{{ announcement.publisher.username }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="content" style="line-height: 1.8;">
+                        {{ announcement.content | safe }}
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{{ url_for('main.announcements') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>返回列表
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

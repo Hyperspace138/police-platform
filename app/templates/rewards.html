@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}悬赏令 - 群防群治智慧警务平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- 页面标题 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-cash-coin me-2 text-primary"></i>悬赏令</h2>
+        <a href="{{ url_for('main.clue_status') }}" class="btn btn-outline-primary">
+            <i class="bi bi-search me-1"></i>查询线索状态
+        </a>
+    </div>
+    
+    <!-- 筛选栏 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <select name="case_type" class="form-select" onchange="this.form.submit()">
+                        <option value="">全部类型</option>
+                        {% for type, count in case_types %}
+                        <option value="{{ type }}" {{ 'selected' if current_type == type else '' }}>
+                            {{ type }} ({{ count }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-8 text-end">
+                    <span class="text-muted">共 {{ pagination.total }} 条悬赏令</span>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 悬赏令列表 -->
+    <div class="row g-4">
+        {% for reward in rewards %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 reward-card shadow-sm">
+                {% if reward.suspect_photo %}
+                <img src="{{ url_for('static', filename=reward.suspect_photo) }}" 
+                     class="card-img-top" alt="悬赏图片" style="height: 200px; object-fit: cover;">
+                {% else %}
+                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                    <i class="bi bi-person-square display-1 text-muted"></i>
+                </div>
+                {% endif %}
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="badge bg-danger">{{ reward.case_type }}</span>
+                        <span class="text-muted small">
+                            <i class="bi bi-eye me-1"></i>{{ reward.view_count }}
+                        </span>
+                    </div>
+                    <h5 class="card-title">{{ reward.title }}</h5>
+                    <p class="card-text text-muted small">{{ reward.content[:100] }}...</p>
+                    
+                    {% if reward.suspect_name %}
+                    <p class="small mb-1">
+                        <strong>嫌疑人：</strong>{{ reward.suspect_name }}
+                    </p>
+                    {% endif %}
+                    
+                    {% if reward.location %}
+                    <p class="small mb-1 text-muted">
+                        <i class="bi bi-geo-alt me-1"></i>{{ reward.location }}
+                    </p>
+                    {% endif %}
+                    
+                    {% if reward.deadline %}
+                    <p class="small mb-1 text-warning">
+                        <i class="bi bi-clock me-1"></i>截止：{{ reward.deadline.strftime('%Y-%m-%d') }}
+                    </p>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-danger fw-bold fs-5">
+                            <i class="bi bi-currency-yen me-1"></i>{{ "%.0f"|format(reward.reward_amount) }}
+                        </span>
+                        <div>
+                            <a href="{{ url_for('main.reward_detail', id=reward.id) }}" class="btn btn-outline-primary btn-sm me-1">
+                                详情
+                            </a>
+                            <a href="{{ url_for('main.submit_clue', reward_id=reward.id) }}" class="btn btn-primary btn-sm">
+                                举报
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12 text-center py-5">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <p class="mt-3 text-muted">暂无进行中的悬赏令</p>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- 分页 -->
+    {% if pagination.pages > 1 %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if pagination.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('main.rewards', page=pagination.prev_num, case_type=current_type) }}">
+                    上一页
+                </a>
+            </li>
+            {% endif %}
+            
+            {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+                {% if page_num %}
+                    {% if page_num == pagination.page %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_num }}</span>
+                    </li>
+                    {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('main.rewards', page=page_num, case_type=current_type) }}">
+                            {{ page_num }}
+                        </a>
+                    </li>
+                    {% endif %}
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if pagination.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('main.rewards', page=pagination.next_num, case_type=current_type) }}">
+                    下一页
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

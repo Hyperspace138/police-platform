@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}公告 - 群防群治智慧警务平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-megaphone me-2 text-warning"></i>公告</h2>
+                <div class="btn-group">
+                    <a href="{{ url_for('main.announcements') }}" 
+                       class="btn {{ 'btn-warning' if not current_category else 'btn-outline-warning' }}">全部</a>
+                    <a href="{{ url_for('main.announcements', category='notice') }}" 
+                       class="btn {{ 'btn-warning' if current_category == 'notice' else 'btn-outline-warning' }}">通知</a>
+                    <a href="{{ url_for('main.announcements', category='news') }}" 
+                       class="btn {{ 'btn-warning' if current_category == 'news' else 'btn-outline-warning' }}">新闻</a>
+                    <a href="{{ url_for('main.announcements', category='safety') }}" 
+                       class="btn {{ 'btn-warning' if current_category == 'safety' else 'btn-outline-warning' }}">安全</a>
+                </div>
+            </div>
+            
+            <div class="card shadow">
+                <div class="list-group list-group-flush">
+                    {% for announcement in announcements %}
+                    <a href="{{ url_for('main.announcement_detail', id=announcement.id) }}" 
+                       class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">
+                                {% if announcement.is_pinned %}
+                                <span class="badge bg-danger me-2">置顶</span>
+                                {% endif %}
+                                <span class="badge bg-secondary me-2">{{ announcement.category }}</span>
+                                {{ announcement.title }}
+                            </h5>
+                            <small class="text-muted">{{ announcement.published_at.strftime('%Y-%m-%d') }}</small>
+                        </div>
+                        <p class="mb-1 text-muted">{{ announcement.content[:100] }}...</p>
+                        <small class="text-muted">
+                            <i class="bi bi-eye me-1"></i>{{ announcement.view_count }} 浏览
+                        </small>
+                    </a>
+                    {% else %}
+                    <div class="list-group-item text-center py-5">
+                        <i class="bi bi-inbox display-1 text-muted"></i>
+                        <p class="mt-3 text-muted">暂无公告</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- 分页 -->
+            {% if pagination.pages > 1 %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('main.announcements', page=pagination.prev_num, category=current_category) }}">上一页</a>
+                    </li>
+                    {% endif %}
+                    {% for page_num in pagination.iter_pages() %}
+                        {% if page_num %}
+                        <li class="page-item {{ 'active' if page_num == pagination.page else '' }}">
+                            <a class="page-link" href="{{ url_for('main.announcements', page=page_num, category=current_category) }}">{{ page_num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('main.announcements', page=pagination.next_num, category=current_category) }}">下一页</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>关于公告</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-0">
+                        本平台发布的公告包括警方通知、安全提示、平台新闻等内容。
+                        请定期关注以获取最新信息。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

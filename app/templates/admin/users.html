@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}用户管理 - 群防群治智慧警务平台{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- 侧边栏 -->
+        <div class="col-lg-2 mb-4">
+            <div class="list-group shadow">
+                <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-speedometer2 me-2"></i>仪表盘
+                </a>
+                <a href="{{ url_for('admin.users') }}" class="list-group-item list-group-item-action active">
+                    <i class="bi bi-people me-2"></i>用户管理
+                </a>
+                <a href="{{ url_for('admin.admin_rewards') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-cash-coin me-2"></i>悬赏令
+                </a>
+                <a href="{{ url_for('admin.admin_clues') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-file-earmark-text me-2"></i>线索管理
+                </a>
+                <a href="{{ url_for('admin.admin_hazards') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-exclamation-triangle me-2"></i>隐患管理
+                </a>
+                <a href="{{ url_for('admin.admin_tasks') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-list-check me-2"></i>任务管理
+                </a>
+                <a href="{{ url_for('admin.emergency_dispatch') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-broadcast me-2"></i>应急调度
+                </a>
+                <a href="{{ url_for('admin.admin_announcements') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-megaphone me-2"></i>公告管理
+                </a>
+                <a href="{{ url_for('admin.reward_items') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-gift me-2"></i>积分商城
+                </a>
+            </div>
+        </div>
+
+        <!-- 主内容 -->
+        <div class="col-lg-10">
+            <h3 class="mb-4"><i class="bi bi-people me-2"></i>用户管理</h3>
+
+            <!-- 搜索和筛选 -->
+            <div class="card shadow mb-4">
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('admin.users') }}" class="row g-3">
+                        <div class="col-md-3">
+                            <select name="role" class="form-select" onchange="this.form.submit()">
+                                <option value="">全部角色</option>
+                                {% for code, name in roles.items() %}
+                                <option value="{{ code }}" {{ 'selected' if request.args.get('role')==code else '' }}>{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <input type="text" class="form-control" name="keyword" placeholder="用户名/手机号/姓名" value="{{ request.args.get('keyword', '') }}">
+                                <button class="btn btn-outline-primary" type="submit"><i class="bi bi-search"></i></button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 用户列表 -->
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>用户名</th>
+                                    <th>手机号</th>
+                                    <th>真实姓名</th>
+                                    <th>角色</th>
+                                    <th>积分</th>
+                                    <th>状态</th>
+                                    <th>注册时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr>
+                                    <td>{{ user.id }}</td>
+                                    <td>{{ user.username }}</td>
+                                    <td>{{ user.phone }}</td>
+                                    <td>{{ user.real_name or '-' }}</td>
+                                    <td><span class="badge bg-secondary">{{ roles.get(user.role, '普通用户') }}</span></td>
+                                    <td>{{ user.points }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if user.is_active else 'secondary' }}">
+                                            {{ '正常' if user.is_active else '禁用' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editUserModal{{ user.id }}">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-{{ 'danger' if user.is_active else 'success' }}" onclick="toggleUser({{ user.id }})">
+                                            <i class="bi bi-{{ 'ban' if user.is_active else 'check-circle' }}"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <!-- 编辑用户模态框 -->
+                                <div class="modal fade" id="editUserModal{{ user.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form method="POST" action="{{ url_for('admin.edit_user', id=user.id) }}">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">编辑用户 - {{ user.username }}</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">角色</label>
+                                                        <select name="role" class="form-select">
+                                                            {% for code, name in roles.items() %}
+                                                            <option value="{{ code }}" {{ 'selected' if user.role==code else '' }}>{{ name }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">积分</label>
+                                                        <input type="number" class="form-control" name="points" value="{{ user.points }}" step="1">
+                                                    </div>
+                                                    <div class="form-check mb-3">
+                                                        <input class="form-check-input" type="checkbox" name="is_active" id="is_active{{ user.id }}" {{ 'checked' if user.is_active else '' }}>
+                                                        <label class="form-check-label" for="is_active{{ user.id }}">账号正常</label>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                                    <button type="submit" class="btn btn-primary">保存</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 分页 -->
+                    {% if pagination.pages > 1 %}
+                    <nav class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if pagination.has_prev %}
+                            <li class="page-item"><a class="page-link" href="{{ url_for('admin.users', page=pagination.prev_num, role=request.args.get('role'), keyword=request.args.get('keyword')) }}">上一页</a></li>
+                            {% endif %}
+                            {% for p in pagination.iter_pages() %}
+                                {% if p %}
+                                <li class="page-item {{ 'active' if p == pagination.page else '' }}"><a class="page-link" href="{{ url_for('admin.users', page=p, role=request.args.get('role'), keyword=request.args.get('keyword')) }}">{{ p }}</a></li>
+                                {% else %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                {% endif %}
+                            {% endfor %}
+                            {% if pagination.has_next %}
+                            <li class="page-item"><a class="page-link" href="{{ url_for('admin.users', page=pagination.next_num, role=request.args.get('role'), keyword=request.args.get('keyword')) }}">下一页</a></li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleUser(userId) {
+    fetch(`/admin/user/${userId}/toggle-active`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) location.reload();
+    });
+}
+</script>
+{% endblock %}

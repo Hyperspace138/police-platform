@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}管理后台 - 群防群治智慧警务平台{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- 侧边栏 -->
+        <div class="col-lg-2 mb-4">
+            <div class="list-group shadow">
+                <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action active">
+                    <i class="bi bi-speedometer2 me-2"></i>仪表盘
+                </a>
+                <a href="{{ url_for('admin.users') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-people me-2"></i>用户管理
+                </a>
+                <a href="{{ url_for('admin.admin_rewards') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-cash-coin me-2"></i>悬赏令
+                </a>
+                <a href="{{ url_for('admin.admin_clues') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-file-earmark-text me-2"></i>线索管理
+                </a>
+                <a href="{{ url_for('admin.admin_hazards') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-exclamation-triangle me-2"></i>隐患管理
+                </a>
+                <a href="{{ url_for('admin.admin_tasks') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-list-check me-2"></i>任务管理
+                </a>
+                <a href="{{ url_for('admin.emergency_dispatch') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-broadcast me-2"></i>应急调度
+                </a>
+                <a href="{{ url_for('admin.admin_announcements') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-megaphone me-2"></i>公告管理
+                </a>
+                <a href="{{ url_for('admin.reward_items') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-gift me-2"></i>积分商城
+                </a>
+            </div>
+        </div>
+        
+        <!-- 主内容区 -->
+        <div class="col-lg-10">
+            <h3 class="mb-4"><i class="bi bi-speedometer2 me-2"></i>管理仪表盘</h3>
+            
+            <!-- 统计卡片 -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0">{{ stats.total_users }}</h4>
+                                    <small>总用户数</small>
+                                </div>
+                                <i class="bi bi-people display-6"></i>
+                            </div>
+                            <small>今日新增：{{ stats.new_users_today }}</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0">{{ stats.pending_clues }}</h4>
+                                    <small>待处理线索</small>
+                                </div>
+                                <i class="bi bi-file-earmark-text display-6"></i>
+                            </div>
+                            <small>累计：{{ stats.total_clues }}</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0">{{ stats.pending_hazards }}</h4>
+                                    <small>待处理隐患</small>
+                                </div>
+                                <i class="bi bi-exclamation-triangle display-6"></i>
+                            </div>
+                            <small>累计：{{ stats.total_hazards }}</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h4 class="mb-0">{{ stats.online_security }}</h4>
+                                    <small>在线安保</small>
+                                </div>
+                                <i class="bi bi-shield display-6"></i>
+                            </div>
+                            <small>悬赏：{{ stats.active_rewards }} 任务：{{ stats.active_tasks }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <!-- 待处理线索 -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card shadow h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>待处理线索</h6>
+                            <a href="{{ url_for('admin.admin_clues') }}" class="btn btn-sm btn-outline-primary">查看全部</a>
+                        </div>
+                        <div class="card-body">
+                            {% if pending_clues %}
+                            <div class="list-group list-group-flush">
+                                {% for clue in pending_clues %}
+                                <a href="{{ url_for('admin.clue_detail', id=clue.id) }}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex justify-content-between">
+                                        <small><code>{{ clue.clue_no }}</code></small>
+                                        <small class="text-muted">{{ clue.submitted_at.strftime('%m-%d %H:%M') }}</small>
+                                    </div>
+                                    <p class="mb-0 small text-truncate">{{ clue.content[:50] }}...</p>
+                                </a>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4 text-muted">
+                                <i class="bi bi-check-circle display-4 text-success"></i>
+                                <p class="mt-2">暂无待处理线索</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 待处理隐患 -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card shadow h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>待处理隐患</h6>
+                            <a href="{{ url_for('admin.admin_hazards') }}" class="btn btn-sm btn-outline-primary">查看全部</a>
+                        </div>
+                        <div class="card-body">
+                            {% if pending_hazards %}
+                            <div class="list-group list-group-flush">
+                                {% for hazard in pending_hazards %}
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="badge bg-{{ 'danger' if hazard.urgency == 'urgent' else 'warning' }}">
+                                            {{ hazard.hazard_type }}
+                                        </span>
+                                        <small class="text-muted">{{ hazard.reported_at.strftime('%m-%d %H:%M') }}</small>
+                                    </div>
+                                    <p class="mb-0 small text-truncate">{{ hazard.description[:50] }}...</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4 text-muted">
+                                <i class="bi bi-check-circle display-4 text-success"></i>
+                                <p class="mt-2">暂无待处理隐患</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 最近注册用户 -->
+            <div class="card shadow">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-people me-2"></i>最近注册用户</h6>
+                    <a href="{{ url_for('admin.users') }}" class="btn btn-sm btn-outline-primary">查看全部</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>用户名</th>
+                                    <th>手机号</th>
+                                    <th>角色</th>
+                                    <th>注册时间</th>
+                                    <th>状态</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in recent_users %}
+                                <tr>
+                                    <td>{{ user.username }}</td>
+                                    <td>{{ user.phone }}</td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ config.USER_ROLES.get(user.role, '普通用户') }}</span>
+                                    </td>
+                                    <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if user.is_active else 'secondary' }}">
+                                            {{ '正常' if user.is_active else '禁用' }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

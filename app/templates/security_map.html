@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+
+{% block title %}治安防控地图 - 群防群治智慧警务平台{% endblock %}
+
+{% block extra_css %}
+<style>
+.map-wrapper {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+}
+#map-container {
+    height: calc(100vh - 180px);
+    min-height: 550px;
+}
+.map-toolbar {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    z-index: 100;
+    display: flex;
+    gap: 8px;
+}
+.map-toolbar .btn {
+    background: white;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+.map-legend {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
+    padding: 15px 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.1);
+    z-index: 100;
+    min-width: 160px;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+.legend-item:last-child { margin-bottom: 0; }
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+.legend-dot.urgent { background: #dc3545; box-shadow: 0 0 8px #dc3545; }
+.legend-dot.high { background: #fd7e14; box-shadow: 0 0 8px #fd7e14; }
+.legend-dot.normal { background: #ffc107; }
+.legend-dot.resolved { background: #198754; }
+.legend-dot.security { background: #0d6efd; box-shadow: 0 0 8px #0d6efd; }
+.legend-dot.emergency { background: #dc3545; box-shadow: 0 0 8px #dc3545; }
+
+.stat-mini {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    z-index: 100;
+    display: flex;
+    gap: 10px;
+}
+.stat-mini-item {
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
+    padding: 8px 16px;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    text-align: center;
+    min-width: 80px;
+}
+.stat-mini-item .count {
+    font-size: 1.3rem;
+    font-weight: 800;
+    line-height: 1;
+}
+.stat-mini-item .label {
+    font-size: 0.7rem;
+    color: #6c757d;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="map-wrapper">
+        <div id="map-container"></div>
+
+        <!-- 统计面板 -->
+        <div class="stat-mini" id="stat-panel">
+            <div class="stat-mini-item">
+                <div class="count text-danger" id="count-urgent">0</div>
+                <div class="label">紧急隐患</div>
+            </div>
+            <div class="stat-mini-item">
+                <div class="count text-warning" id="count-pending">0</div>
+                <div class="label">待处理</div>
+            </div>
+            <div class="stat-mini-item">
+                <div class="count text-primary" id="count-online">0</div>
+                <div class="label">在线安保</div>
+            </div>
+            <div class="stat-mini-item">
+                <div class="count text-success" id="count-resolved">0</div>
+                <div class="label">已解决</div>
+            </div>
+        </div>
+
+        <!-- 工具栏 -->
+        <div class="map-toolbar">
+            <button class="btn btn-sm" onclick="refreshMap()" title="刷新地图">
+                <i class="bi bi-arrow-clockwise me-1"></i>刷新
+            </button>
+            <button class="btn btn-sm" onclick="locateMe()" title="定位到我">
+                <i class="bi bi-geo-alt me-1"></i>定位
+            </button>
+            {% if current_user.is_authenticated and current_user.role in ['security', 'grid_worker', 'cloud_sentinel'] %}
+            <button class="btn btn-sm btn-success" onclick="toggleDuty()">
+                <i class="bi bi-broadcast me-1"></i>
+                <span id="duty-text">{{ '下班打卡' if current_user.is_on_duty else '上班打卡' }}</span>
+            </button>
+            {% endif %}
+        </div>
+
+        <!-- 图例 -->
+        <div class="map-legend">
+            <h6 class="mb-2 small fw-bold">图例说明</h6>
+            <div class="legend-item"><span class="legend-dot urgent"></span>紧急隐患</div>
+            <div class="legend-item"><span class="legend-dot high"></span>高危隐患</div>
+            <div class="legend-item"><span class="legend-dot normal"></span>一般隐患</div>
+            <div class="legend-item"><span class="legend-dot resolved"></span>已解决</div>
+            <div class="legend-item"><span class="legend-dot security"></span>在线安保</div>
+            <div class="legend-item"><span class="legend-dot emergency"></span>应急事件</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://webapi.amap.com/maps?v=2.0&key={{ amap_key }}{% if amap_security_code %}&securityCode={{ amap_security_code }}{% endif %}"></script>
+<script>
+var map;
+var hazardMarkers = [];
+var securityMarkers = [];
+var emergencyMarkers = [];
+var userLocationMarker;
+
+// 初始化地图
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof AMap === 'undefined') {
+        document.getElementById('map-container').innerHTML = '<div class="d-flex align-items-center justify-content-center h-100 text-muted"><div><i class="bi bi-exclamation-triangle display-1"></i><p>地图加载失败，请检查网络或高德地图API Key配置</p></div></div>';
+        return;
+    }
+
+    map = new AMap.Map('map-container', {
+        zoom: 13,
+        center: [116.4074, 39.9042],
+        resizeEnable: true,
+        mapStyle: 'amap://styles/light'
+    });
+
+    loadAllData();
+});
+
+// 加载所有数据
+function loadAllData() {
+    // 加载隐患数据
+    fetch('/api/hazards/map')
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.success && res.data) {
+                var counts = {urgent: 0, pending: 0, resolved: 0};
+                res.data.forEach(function(h) {
+                    addHazardMarker(h);
+                    if (h.urgency === 'urgent') counts.urgent++;
+                    if (h.status === 'pending') counts.pending++;
+                    if (h.status === 'resolved') counts.resolved++;
+                });
+                updateCounts(counts);
+            }
+        });
+
+    // 加载在线安保
+    fetch('/api/stats/dashboard')
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.success && res.data) {
+                document.getElementById('count-online').textContent = res.data.online_security || 0;
+            }
+        });
+}
+
+// 添加隐患标记
+function addHazardMarker(hazard) {
+    var iconColor = hazard.urgency === 'urgent' ? 'r' :
+                    hazard.urgency === 'high' ? 'o' :
+                    hazard.status === 'resolved' ? 'g' : 'y';
+
+    var marker = new AMap.Marker({
+        position: [hazard.lng, hazard.lat],
+        title: hazard.type,
+        icon: new AMap.Icon({
+            size: new AMap.Size(25, 34),
+            image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b' + iconColor + '.png',
+            imageSize: new AMap.Size(25, 34)
+        }),
+        offset: new AMap.Pixel(-12, -34)
+    });
+
+    var infoWin = new AMap.InfoWindow({
+        offset: new AMap.Pixel(0, -40),
+        content: '<div style="padding:8px; min-width:150px;">' +
+            '<h6 style="margin:0 0 5px;">' + hazard.type + '</h6>' +
+            '<span class="badge bg-' + (hazard.status === 'resolved' ? 'success' : 'warning') + '">' +
+            (hazard.status === 'resolved' ? '已解决' : (hazard.urgency === 'urgent' ? '紧急' : '待处理')) +
+            '</span></div>'
+    });
+
+    marker.on('click', function() {
+        infoWin.open(map, marker.getPosition());
+    });
+
+    marker.setMap(map);
+    hazardMarkers.push(marker);
+}
+
+// 更新统计
+function updateCounts(counts) {
+    if (counts.urgent !== undefined) document.getElementById('count-urgent').textContent = counts.urgent;
+    if (counts.pending !== undefined) document.getElementById('count-pending').textContent = counts.pending;
+    if (counts.resolved !== undefined) document.getElementById('count-resolved').textContent = counts.resolved;
+}
+
+// 定位到我的位置
+function locateMe() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            var lng = pos.coords.longitude;
+            var lat = pos.coords.latitude;
+            map.setCenter([lng, lat]);
+            map.setZoom(16);
+
+            if (userLocationMarker) {
+                userLocationMarker.setMap(null);
+            }
+            userLocationMarker = new AMap.Marker({
+                position: [lng, lat],
+                icon: new AMap.Icon({
+                    size: new AMap.Size(30, 30),
+                    image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png',
+                    imageSize: new AMap.Size(30, 30)
+                }),
+                title: '我的位置'
+            });
+            userLocationMarker.setMap(map);
+
+            // 更新用户位置到服务器
+            fetch('/api/user/location', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({lat: lat, lng: lng})
+            });
+        }, function() {
+            alert('无法获取位置信息，请检查浏览器定位权限');
+        });
+    }
+}
+
+// 刷新地图
+function refreshMap() {
+    hazardMarkers.forEach(function(m) { m.setMap(null); });
+    hazardMarkers = [];
+    loadAllData();
+}
+
+// 切换值班状态
+function toggleDuty() {
+    var btn = document.getElementById('duty-text');
+    var isOnDuty = btn.textContent === '下班打卡';
+
+    fetch('/api/user/duty', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({is_on_duty: !isOnDuty})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            btn.textContent = isOnDuty ? '上班打卡' : '下班打卡';
+            alert(isOnDuty ? '已下班打卡' : '已上班打卡，您的位置已上报');
+            if (!isOnDuty) locateMe();
+        }
+    });
+}
+
+// 自动定位（有权限时）
+setTimeout(function() {
+    {% if current_user.is_authenticated and current_user.role in ['security', 'grid_worker', 'cloud_sentinel'] %}
+    locateMe();
+    {% endif %}
+}, 1000);
+</script>
+{% endblock %}

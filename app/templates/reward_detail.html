@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}{{ reward.title }} - 悬赏令详情{% endblock %}
+
+{% block extra_css %}
+<style>
+#map-container {
+    height: 300px;
+    border-radius: 8px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">首页</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.rewards') }}">悬赏令</a></li>
+                    <li class="breadcrumb-item active">详情</li>
+                </ol>
+            </nav>
+            
+            <div class="card shadow mb-4">
+                <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="bi bi-cash-coin me-2"></i>{{ reward.title }}</h4>
+                    <span class="badge bg-light text-dark">{{ reward.case_type }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="text-center p-4 bg-light rounded">
+                                <h2 class="text-danger mb-0">
+                                    <i class="bi bi-currency-yen"></i>{{ "%.0f"|format(reward.reward_amount) }}
+                                </h2>
+                                <small class="text-muted">悬赏金额</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-4">
+                                <p class="mb-2">
+                                    <i class="bi bi-eye me-2"></i>浏览：{{ reward.view_count }}
+                                </p>
+                                <p class="mb-2">
+                                    <i class="bi bi-calendar me-2"></i>发布：{{ reward.published_at.strftime('%Y-%m-%d') }}
+                                </p>
+                                {% if reward.deadline %}
+                                <p class="mb-0">
+                                    <i class="bi bi-clock me-2"></i>截止：{{ reward.deadline.strftime('%Y-%m-%d') }}
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h6>案件详情</h6>
+                    <p class="text-muted">{{ reward.content }}</p>
+                    
+                    {% if reward.suspect_name %}
+                    <hr>
+                    <h6>嫌疑人信息</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            {% if reward.suspect_photo %}
+                            <img src="{{ url_for('static', filename=reward.suspect_photo) }}" 
+                                 alt="嫌疑人照片" class="img-fluid rounded">
+                            {% else %}
+                            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <i class="bi bi-person display-1 text-muted"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-8">
+                            <p><strong>姓名：</strong>{{ reward.suspect_name }}</p>
+                            {% if reward.suspect_description %}
+                            <p><strong>特征描述：</strong></p>
+                            <p class="text-muted">{{ reward.suspect_description }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if reward.location %}
+                    <hr>
+                    <h6>案发地点</h6>
+                    <p><i class="bi bi-geo-alt me-2"></i>{{ reward.location }}</p>
+                    {% if reward.lat and reward.lng %}
+                    <div id="map-container" class="border"></div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <div class="d-grid gap-2 d-md-flex">
+                        <a href="{{ url_for('main.submit_clue', reward_id=reward.id) }}" class="btn btn-danger btn-lg flex-fill">
+                            <i class="bi bi-send me-2"></i>提供线索
+                        </a>
+                        <a href="{{ url_for('main.rewards') }}" class="btn btn-outline-secondary btn-lg">
+                            返回列表
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <!-- 悬赏提示 -->
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>悬赏提示</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0 small">
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>提供真实有效线索</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>保护个人隐私</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>可选择匿名举报</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>线索核实后发放奖励</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- 我的线索 -->
+            {% if current_user.is_authenticated and related_clues %}
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>我的线索</h6>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for clue in related_clues %}
+                    <a href="{{ url_for('main.clue_status', clue_no=clue.clue_no) }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between">
+                            <small><code>{{ clue.clue_no }}</code></small>
+                            <span class="badge bg-{{ 'success' if clue.status == 'rewarded' else 'warning' }}">
+                                {{ config.CLUE_STATUS.get(clue.status, clue.status) }}
+                            </span>
+                        </div>
+                        <small class="text-muted">{{ clue.submitted_at.strftime('%Y-%m-%d') }}</small>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if reward.lat and reward.lng %}
+<script src="https://webapi.amap.com/maps?v=2.0&key={{ amap_key }}{% if amap_security_code %}&securityCode={{ amap_security_code }}{% endif %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof AMap !== 'undefined') {
+        var map = new AMap.Map('map-container', {
+            zoom: 15,
+            center: [{{ reward.lng }}, {{ reward.lat }}]
+        });
+        
+        var marker = new AMap.Marker({
+            position: [{{ reward.lng }}, {{ reward.lat }}],
+            title: '{{ reward.title }}'
+        });
+        map.add(marker);
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

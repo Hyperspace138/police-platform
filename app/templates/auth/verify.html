@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}实名认证 - 群防群治智慧警务平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0"><i class="bi bi-shield-check me-2"></i>实名认证</h4>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-info-circle me-2"></i>为什么要实名认证？</h6>
+                        <ul class="mb-0">
+                            <li>确保平台用户身份真实可靠</li>
+                            <li>便于发放悬赏奖励</li>
+                            <li>提高线索可信度</li>
+                            <li>参与更多平台功能</li>
+                        </ul>
+                    </div>
+                    
+                    <form method="POST" action="{{ url_for('auth.verify_identity') }}">
+                        <div class="mb-3">
+                            <label for="real_name" class="form-label">真实姓名 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="real_name" name="real_name" 
+                                   placeholder="请输入您的真实姓名" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="id_card" class="form-label">身份证号码 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="id_card" name="id_card" 
+                                   placeholder="请输入18位身份证号码" required 
+                                   pattern="^\d{17}[\dXx]$" maxlength="18">
+                            <div class="form-text">您的身份信息将被加密存储，仅用于实名认证</div>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="agree" name="agree" required>
+                            <label class="form-check-label" for="agree">
+                                我确认提供的信息真实有效，并同意 <a href="#">实名认证协议</a>
+                            </label>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-circle me-2"></i>提交认证
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

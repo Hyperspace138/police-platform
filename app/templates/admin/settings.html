@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}系统设置 - 群防群治智慧警务平台{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-2 mb-4">
+            <div class="list-group shadow">
+                <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-speedometer2 me-2"></i>仪表盘
+                </a>
+                <a href="{{ url_for('admin.users') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-people me-2"></i>用户管理
+                </a>
+                <a href="{{ url_for('admin.admin_rewards') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-cash-coin me-2"></i>悬赏令
+                </a>
+                <a href="{{ url_for('admin.admin_clues') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-file-earmark-text me-2"></i>线索管理
+                </a>
+                <a href="{{ url_for('admin.admin_hazards') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-exclamation-triangle me-2"></i>隐患管理
+                </a>
+                <a href="{{ url_for('admin.admin_tasks') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-list-check me-2"></i>任务管理
+                </a>
+                <a href="{{ url_for('admin.emergency_dispatch') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-broadcast me-2"></i>应急调度
+                </a>
+                <a href="{{ url_for('admin.admin_announcements') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-megaphone me-2"></i>公告管理
+                </a>
+                <a href="{{ url_for('admin.reward_items') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-gift me-2"></i>积分商城
+                </a>
+                <a href="{{ url_for('admin.settings') }}" class="list-group-item list-group-item-action active">
+                    <i class="bi bi-gear me-2"></i>系统设置
+                </a>
+            </div>
+        </div>
+
+        <div class="col-lg-10">
+            <h3 class="mb-4"><i class="bi bi-gear me-2"></i>系统设置</h3>
+
+            <div class="row">
+                <!-- 积分配置 -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card shadow h-100">
+                        <div class="card-header bg-warning">
+                            <h6 class="mb-0"><i class="bi bi-star me-2"></i>积分配置</h6>
+                        </div>
+                        <div class="card-body">
+                            <form onsubmit="saveSetting(event, 'points_config')">
+                                <div class="mb-3">
+                                    <label class="form-label">提交线索积分</label>
+                                    <input type="number" class="form-control" id="clue_submit" value="{{ config.POINTS_CONFIG.clue_submit }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">线索被采纳积分</label>
+                                    <input type="number" class="form-control" id="clue_adopted" value="{{ config.POINTS_CONFIG.clue_adopted }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">完成任务积分</label>
+                                    <input type="number" class="form-control" id="task_complete" value="{{ config.POINTS_CONFIG.task_complete }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">巡逻打卡积分</label>
+                                    <input type="number" class="form-control" id="patrol_checkin" value="{{ config.POINTS_CONFIG.patrol_checkin }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">应急响应积分</label>
+                                    <input type="number" class="form-control" id="emergency_response" value="{{ config.POINTS_CONFIG.emergency_response }}">
+                                </div>
+                                <button type="submit" class="btn btn-warning">
+                                    <i class="bi bi-save me-1"></i>保存积分配置
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 系统参数 -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card shadow h-100">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0"><i class="bi bi-sliders me-2"></i>系统参数</h6>
+                        </div>
+                        <div class="card-body">
+                            <form onsubmit="saveSetting(event, 'system_params')">
+                                <div class="mb-3">
+                                    <label class="form-label">每页显示条数</label>
+                                    <input type="number" class="form-control" id="posts_per_page" value="{{ config.POSTS_PER_PAGE }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">会话过期时间（小时）</label>
+                                    <input type="number" class="form-control" id="session_lifetime" value="24">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">最大上传文件大小（MB）</label>
+                                    <input type="number" class="form-control" id="max_upload_size" value="16">
+                                </div>
+                                <button type="submit" class="btn btn-info text-white">
+                                    <i class="bi bi-save me-1"></i>保存系统参数
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 高德地图配置 -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card shadow h-100">
+                        <div class="card-header bg-primary">
+                            <h6 class="mb-0"><i class="bi bi-map me-2"></i>高德地图配置</h6>
+                        </div>
+                        <div class="card-body">
+                            <form onsubmit="saveSetting(event, 'amap_config')">
+                                <div class="mb-3">
+                                    <label class="form-label">API Key</label>
+                                    <input type="text" class="form-control" id="amap_key" placeholder="当前已配置" readonly>
+                                    <small class="text-muted">请在 .env 文件中修改 AMAP_KEY 环境变量</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">安全密钥</label>
+                                    <input type="text" class="form-control" id="amap_security_code" placeholder="当前已配置" readonly>
+                                    <small class="text-muted">请在 .env 文件中修改 AMAP_SECURITY_CODE 环境变量</small>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 系统状态 -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card shadow h-100">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="bi bi-activity me-2"></i>系统状态</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="text-muted small">数据库类型</label>
+                                <p>{{ config.SQLALCHEMY_DATABASE_URI.split('://')[0] if config.SQLALCHEMY_DATABASE_URI else '未知' }}</p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted small">上传目录</label>
+                                <p><code>{{ config.UPLOAD_FOLDER }}</code></p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted small">运行模式</label>
+                                <p>
+                                    {% if config.DEBUG %}
+                                    <span class="badge bg-warning text-dark">开发模式</span>
+                                    {% else %}
+                                    <span class="badge bg-success">生产模式</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted small">Session密钥</label>
+                                <p><code>{{ config.SECRET_KEY[:20] }}...</code></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function saveSetting(event, category) {
+    event.preventDefault();
+    var form = event.target;
+    var inputs = form.querySelectorAll('input:not([readonly])');
+    var data = {};
+    inputs.forEach(function(input) {
+        data[input.id] = input.value;
+    });
+
+    fetch('/admin/setting/update', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            key: category,
+            value: JSON.stringify(data)
+        })
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(result) {
+        if (result.success) {
+            alert('设置保存成功！');
+        } else {
+            alert('保存失败，请重试');
+        }
+    })
+    .catch(function(error) {
+        alert('保存失败：' + error);
+    });
+}
+</script>
+{% endblock %}

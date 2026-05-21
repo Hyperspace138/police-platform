@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}任务管理 - 群防群治智慧警务平台{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-2 mb-4">
+            <div class="list-group shadow">
+                <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-speedometer2 me-2"></i>仪表盘
+                </a>
+                <a href="{{ url_for('admin.users') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-people me-2"></i>用户管理
+                </a>
+                <a href="{{ url_for('admin.admin_rewards') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-cash-coin me-2"></i>悬赏令
+                </a>
+                <a href="{{ url_for('admin.admin_clues') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-file-earmark-text me-2"></i>线索管理
+                </a>
+                <a href="{{ url_for('admin.admin_hazards') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-exclamation-triangle me-2"></i>隐患管理
+                </a>
+                <a href="{{ url_for('admin.admin_tasks') }}" class="list-group-item list-group-item-action active">
+                    <i class="bi bi-list-check me-2"></i>任务管理
+                </a>
+                <a href="{{ url_for('admin.emergency_dispatch') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-broadcast me-2"></i>应急调度
+                </a>
+                <a href="{{ url_for('admin.admin_announcements') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-megaphone me-2"></i>公告管理
+                </a>
+                <a href="{{ url_for('admin.reward_items') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-gift me-2"></i>积分商城
+                </a>
+            </div>
+        </div>
+
+        <div class="col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3><i class="bi bi-list-check me-2"></i>任务管理</h3>
+                <a href="{{ url_for('admin.create_task') }}" class="btn btn-success">
+                    <i class="bi bi-plus-circle me-1"></i>发布新任务
+                </a>
+            </div>
+
+            <!-- 状态筛选 -->
+            <div class="card shadow mb-4">
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('admin.admin_tasks') }}" class="row">
+                        <div class="col-md-3">
+                            <select name="status" class="form-select" onchange="this.form.submit()">
+                                <option value="">全部状态</option>
+                                <option value="open" {{ 'selected' if request.args.get('status')=='open' else '' }}>开放抢单</option>
+                                <option value="assigned" {{ 'selected' if request.args.get('status')=='assigned' else '' }}>已分配</option>
+                                <option value="in_progress" {{ 'selected' if request.args.get('status')=='in_progress' else '' }}>进行中</option>
+                                <option value="completed" {{ 'selected' if request.args.get('status')=='completed' else '' }}>已完成</option>
+                                <option value="cancelled" {{ 'selected' if request.args.get('status')=='cancelled' else '' }}>已取消</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 任务列表 -->
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>编号</th>
+                                    <th>标题</th>
+                                    <th>类型</th>
+                                    <th>所需/已有人数</th>
+                                    <th>积分奖励</th>
+                                    <th>状态</th>
+                                    <th>发布时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in tasks %}
+                                <tr>
+                                    <td><code>{{ task.task_no }}</code></td>
+                                    <td>{{ task.title }}</td>
+                                    <td>{{ task.task_type }}</td>
+                                    <td>{{ task.assigned_count }}/{{ task.required_people }}</td>
+                                    <td>{{ task.reward_points }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if task.status=='open' else 'primary' if task.status=='assigned' else 'warning' if task.status=='in_progress' else 'secondary' }}">
+                                            {{ {'open':'开放','assigned':'已分配','in_progress':'进行中','completed':'已完成','cancelled':'已取消'}.get(task.status, task.status) }}
+                                        </span>
+                                    </td>
+                                    <td>{{ task.published_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('main.task_detail', id=task.id) }}" class="btn btn-sm btn-outline-primary" target="_blank"><i class="bi bi-eye"></i></a>
+                                        <!-- 如果有待审核的任务完成，可以在这里添加审核按钮，但需要根据具体逻辑实现，暂不添加 -->
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 分页 -->
+                    {% if pagination.pages > 1 %}
+                    <nav class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if pagination.has_prev %}
+                            <li class="page-item"><a class="page-link" href="{{ url_for('admin.admin_tasks', page=pagination.prev_num, status=request.args.get('status')) }}">上一页</a></li>
+                            {% endif %}
+                            {% for p in pagination.iter_pages() %}
+                                {% if p %}
+                                <li class="page-item {{ 'active' if p == pagination.page else '' }}"><a class="page-link" href="{{ url_for('admin.admin_tasks', page=p, status=request.args.get('status')) }}">{{ p }}</a></li>
+                                {% else %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                {% endif %}
+                            {% endfor %}
+                            {% if pagination.has_next %}
+                            <li class="page-item"><a class="page-link" href="{{ url_for('admin.admin_tasks', page=pagination.next_num, status=request.args.get('status')) }}">下一页</a></li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

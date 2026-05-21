@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}编辑悬赏令 - {{ reward.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+#map-container {
+    height: 300px;
+    border-radius: 8px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- 侧边栏 (与 admin 其他页面保持一致) -->
+        <div class="col-lg-2 mb-4">
+            <div class="list-group shadow">
+                <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-speedometer2 me-2"></i>仪表盘
+                </a>
+                <a href="{{ url_for('admin.users') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-people me-2"></i>用户管理
+                </a>
+                <a href="{{ url_for('admin.admin_rewards') }}" class="list-group-item list-group-item-action active">
+                    <i class="bi bi-cash-coin me-2"></i>悬赏令
+                </a>
+                <a href="{{ url_for('admin.admin_clues') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-file-earmark-text me-2"></i>线索管理
+                </a>
+                <a href="{{ url_for('admin.admin_hazards') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-exclamation-triangle me-2"></i>隐患管理
+                </a>
+                <a href="{{ url_for('admin.admin_tasks') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-list-check me-2"></i>任务管理
+                </a>
+                <a href="{{ url_for('admin.emergency_dispatch') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-broadcast me-2"></i>应急调度
+                </a>
+                <a href="{{ url_for('admin.admin_announcements') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-megaphone me-2"></i>公告管理
+                </a>
+                <a href="{{ url_for('admin.reward_items') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-gift me-2"></i>积分商城
+                </a>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3><i class="bi bi-pencil-square me-2"></i>编辑悬赏令</h3>
+                <a href="{{ url_for('admin.admin_rewards') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>返回列表
+                </a>
+            </div>
+
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('admin.edit_reward', id=reward.id) }}">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">悬赏标题</label>
+                                <input type="text" class="form-control" name="title" value="{{ reward.title }}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">案件类型</label>
+                                <select class="form-select" name="case_type">
+                                    <option value="刑事案件" {% if reward.case_type == '刑事案件' %}selected{% endif %}>刑事案件</option>
+                                    <option value="治安案件" {% if reward.case_type == '治安案件' %}selected{% endif %}>治安案件</option>
+                                    <option value="寻人启事" {% if reward.case_type == '寻人启事' %}selected{% endif %}>寻人启事</option>
+                                    <option value="失物招领" {% if reward.case_type == '失物招领' %}selected{% endif %}>失物招领</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">悬赏金额 (¥)</label>
+                                <input type="number" class="form-control" name="reward_amount" step="0.01" value="{{ reward.reward_amount }}">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">详细描述</label>
+                            <textarea class="form-control" name="content" rows="5" required>{{ reward.content }}</textarea>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">状态</label>
+                                <select class="form-select" name="status">
+                                    <option value="active" {% if reward.status == 'active' %}selected{% endif %}>进行中</option>
+                                    <option value="completed" {% if reward.status == 'completed' %}selected{% endif %}>已完成</option>
+                                    <option value="cancelled" {% if reward.status == 'cancelled' %}selected{% endif %}>已取消</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary btn-lg px-5">
+                                <i class="bi bi-check-circle me-2"></i>保存修改
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

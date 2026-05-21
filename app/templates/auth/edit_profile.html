@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}编辑资料 - 群防群治智慧警务平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-pencil me-2"></i>编辑个人资料</h4>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('auth.edit_profile') }}">
+                        <div class="mb-3">
+                            <label for="real_name" class="form-label">真实姓名</label>
+                            <input type="text" class="form-control" id="real_name" name="real_name" 
+                                   value="{{ current_user.real_name or '' }}" placeholder="请输入真实姓名">
+                            <div class="form-text">实名认证后不可修改</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">电子邮箱</label>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   value="{{ current_user.email or '' }}" placeholder="请输入邮箱">
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check me-1"></i>保存修改
+                            </button>
+                            <a href="{{ url_for('auth.profile') }}" class="btn btn-outline-secondary">
+                                取消
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 修改密码 -->
+            <div class="card shadow mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-lock me-2"></i>修改密码</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('auth.change_password') }}">
+                        <div class="mb-3">
+                            <label for="old_password" class="form-label">原密码</label>
+                            <input type="password" class="form-control" id="old_password" name="old_password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new_password" class="form-label">新密码</label>
+                            <input type="password" class="form-control" id="new_password" name="new_password" 
+                                   required minlength="6">
+                            <div class="form-text">至少6位字符</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new_password2" class="form-label">确认新密码</label>
+                            <input type="password" class="form-control" id="new_password2" name="new_password2" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-key me-1"></i>修改密码
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

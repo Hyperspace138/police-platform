@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}任务抢单 - 群防群治智慧警务平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- 页面标题 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-list-check me-2 text-success"></i>任务抢单</h2>
+        <div class="text-muted">
+            <i class="bi bi-coin me-1"></i>我的积分：{{ current_user.points if current_user.is_authenticated else 0 }}
+        </div>
+    </div>
+    
+    <!-- 任务类型筛选 -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{{ url_for('main.tasks') }}" 
+                   class="btn {{ 'btn-success' if not current_type else 'btn-outline-success' }}">全部</a>
+                {% for type_code, type_name in task_types %}
+                <a href="{{ url_for('main.tasks', task_type=type_code) }}" 
+                   class="btn {{ 'btn-success' if current_type == type_code else 'btn-outline-success' }}">
+                    {{ type_name }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- 任务列表 -->
+    <div class="row g-4">
+        {% for task in tasks %}
+        <div class="col-md-6">
+            <div class="card task-card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="badge bg-success">{{ task.task_type }}</span>
+                        <span class="text-warning">
+                            <i class="bi bi-coin me-1"></i>+{{ task.reward_points }}积分
+                        </span>
+                    </div>
+                    <h5 class="card-title">{{ task.title }}</h5>
+                    <p class="card-text text-muted">{{ task.description[:100] }}...</p>
+                    
+                    <div class="row text-smal text-muted mb-3">
+                        <div class="col-6">
+                            <i class="bi bi-geo-alt me-1"></i>{{ task.location or '地点待定' }}
+                        </div>
+                        <div class="col-6">
+                            <i class="bi bi-people me-1"></i>
+                            {{ TaskAssignment.query.filter_by(task_id=task.id).count() }}/{{ task.required_people }}人
+                        </div>
+                    </div>
+                    
+                    {% if task.start_time and task.end_time %}
+                    <p class="small text-muted mb-2">
+                        <i class="bi bi-clock me-1"></i>
+                        {{ task.start_time.strftime('%m-%d %H:%M') }} ~ {{ task.end_time.strftime('%m-%d %H:%M') }}
+                    </p>
+                    {% endif %}
+                    
+                    {% if task.reward_cash > 0 %}
+                    <p class="small text-danger mb-2">
+                        <i class="bi bi-currency-yen me-1"></i>现金奖励：{{ "%.2f"|format(task.reward_cash) }}
+                    </p>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted small">
+                            范围：{{ task.radius }}米
+                        </span>
+                        <a href="{{ url_for('main.task_detail', id=task.id) }}" class="btn btn-success btn-sm">
+                            查看详情
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12 text-center py-5">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <p class="mt-3 text-muted">暂无可抢任务</p>
+            <p class="small text-muted">任务发布后会第一时间通知您</p>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- 分页 -->
+    {% if pagination.pages > 1 %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if pagination.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('main.tasks', page=pagination.prev_num, task_type=current_type) }}">上一页</a>
+            </li>
+            {% endif %}
+            {% for page_num in pagination.iter_pages() %}
+                {% if page_num %}
+                <li class="page-item {{ 'active' if page_num == pagination.page else '' }}">
+                    <a class="page-link" href="{{ url_for('main.tasks', page=page_num, task_type=current_type) }}">{{ page_num }}</a>
+                </li>
+                {% endif %}
+            {% endfor %}
+            {% if pagination.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('main.tasks', page=pagination.next_num, task_type=current_type) }}">下一页</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

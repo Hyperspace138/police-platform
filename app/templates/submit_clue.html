@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}提交线索 - 群防群治智慧警务平台{% endblock %}
+
+{% block extra_css %}
+<style>
+#map-container {
+    height: 300px;
+    border-radius: 8px;
+}
+.preview-image {
+    max-width: 150px;
+    max-height: 150px;
+    margin: 5px;
+    border-radius: 4px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-file-earmark-text me-2"></i>
+                        {% if reward %}为悬赏令提供线索{% else %}提交线索举报{% endif %}
+                    </h4>
+                </div>
+                <div class="card-body p-4">
+                    {% if reward %}
+                    <div class="alert alert-info">
+                        <h6>相关悬赏令：</h6>
+                        <p class="mb-1"><strong>{{ reward.title }}</strong></p>
+                        <p class="mb-0 small">{{ reward.content[:200] }}...</p>
+                        <input type="hidden" name="reward_id" value="{{ reward.id }}">
+                    </div>
+                    {% endif %}
+                    
+                    <form method="POST" action="{{ url_for('main.submit_clue') }}" enctype="multipart/form-data" id="clueForm">
+                        {% if reward %}
+                        <input type="hidden" name="reward_id" value="{{ reward.id }}">
+                        {% endif %}
+                        
+                        <!-- 线索类型 -->
+                        <div class="mb-3">
+                            <label for="clue_type" class="form-label">线索类型</label>
+                            <select class="form-select" id="clue_type" name="clue_type">
+                                <option value="">请选择线索类型</option>
+                                {% for type in clue_types %}
+                                <option value="{{ type }}">{{ type }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- 线索内容 -->
+                        <div class="mb-3">
+                            <label for="content" class="form-label">线索详情 <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="content" name="content" rows="5" 
+                                      placeholder="请详细描述您掌握的线索，包括时间、地点、人物特征等信息" required></textarea>
+                            <div class="form-text">请尽可能提供详细信息，有助于警方快速核实</div>
+                        </div>
+                        
+                        <!-- 位置信息 -->
+                        <div class="mb-3">
+                            <label class="form-label">位置信息</label>
+                            <div id="map-container" class="mb-2 border"></div>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                                <input type="text" class="form-control" id="location" name="location" 
+                                       placeholder="点击地图选择位置或手动输入地址">
+                                <button type="button" class="btn btn-outline-secondary" onclick="getCurrentLocation()">
+                                    <i class="bi bi-crosshair"></i> 定位
+                                </button>
+                            </div>
+                            <input type="hidden" id="lat" name="lat">
+                            <input type="hidden" id="lng" name="lng">
+                        </div>
+                        
+                        <!-- 上传图片/视频 -->
+                        <div class="mb-3">
+                            <label for="media_files" class="form-label">上传图片/视频</label>
+                            <input type="file" class="form-control" id="media_files" name="media_files" 
+                                   accept="image/*,video/*" multiple onchange="previewFiles(this)">
+                            <div class="form-text">支持上传图片和视频，最多5个文件，单个文件不超过16MB</div>
+                            <div id="preview-container" class="mt-2 d-flex flex-wrap"></div>
+                        </div>
+                        
+                        <!-- 匿名举报 -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_anonymous" name="is_anonymous">
+                                <label class="form-check-label" for="is_anonymous">
+                                    <i class="bi bi-incognito me-1"></i>匿名举报
+                                </label>
+                            </div>
+                            <div class="form-text">选择匿名举报后，您的身份信息将不会被记录，系统会生成一个查询码供您查询处理进度</div>
+                        </div>
+                        
+                        <!-- 匿名联系方式（可选） -->
+                        <div class="mb-3" id="contact-section" style="display: none;">
+                            <label for="contact_phone" class="form-label">联系方式（可选）</label>
+                            <input type="tel" class="form-control" id="contact_phone" name="contact_phone" 
+                                   placeholder="如需反馈或奖励，请留下联系方式">
+                            <div class="form-text">匿名举报时，此信息仅用于警方联系您，不会公开</div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <!-- 提交按钮 -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-send me-2"></i>提交线索
+                            </button>
+                            <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">
+                                取消
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- 高德地图API -->
+<script src="https://webapi.amap.com/maps?v=2.0&key={{ amap_key }}{% if amap_security_code %}&securityCode={{ amap_security_code }}{% endif %}"></script>
+<script>
+let map, marker;
+
+// 初始化地图
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof AMap !== 'undefined') {
+        map = new AMap.Map('map-container', {
+            zoom: 12,
+            center: [116.4074, 39.9042]
+        });
+        
+        // 点击地图选择位置
+        map.on('click', function(e) {
+            setMarker(e.lnglat.getLng(), e.lnglat.getLat());
+        });
+    }
+    
+    // 匿名举报切换
+    document.getElementById('is_anonymous').addEventListener('change', function() {
+        document.getElementById('contact-section').style.display = this.checked ? 'block' : 'none';
+    });
+});
+
+// 设置标记
+function setMarker(lng, lat) {
+    if (marker) {
+        map.remove(marker);
+    }
+    marker = new AMap.Marker({
+        position: [lng, lat]
+    });
+    map.add(marker);
+    
+    document.getElementById('lat').value = lat;
+    document.getElementById('lng').value = lng;
+    
+    // 逆地理编码获取地址
+    // 这里简化处理，实际应调用高德API
+    document.getElementById('location').value = lng + ',' + lat;
+}
+
+// 获取当前位置
+function getCurrentLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            map.setCenter([lng, lat]);
+            setMarker(lng, lat);
+        }, function(error) {
+            alert('无法获取位置信息：' + error.message);
+        });
+    } else {
+        alert('您的浏览器不支持地理定位');
+    }
+}
+
+// 预览文件
+function previewFiles(input) {
+    const container = document.getElementById('preview-container');
+    container.innerHTML = '';
+    
+    if (input.files) {
+        Array.from(input.files).forEach(file => {
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'preview-image';
+                    container.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+}
+
+// AI图像识别（示例）
+function analyzeImage(file) {
+    // 实际应调用后端AI接口
+    fetch('/api/ai/analyze-image', {
+        method: 'POST',
+        body: file
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('clue_type').value = data.hazard_type;
+            document.getElementById('content').value = data.suggested_description;
+        }
+    });
+}
+</script>
+{% endblock %}

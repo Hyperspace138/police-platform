@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}发布任务 - 群防群治智慧警务平台{% endblock %}
+
+{% block extra_css %}
+<style>
+#map-container {
+    height: 300px;
+    border-radius: 8px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- 侧边栏 (与 admin 其他页面保持一致) -->
+        <div class="col-lg-2 mb-4">
+            <div class="list-group shadow">
+                <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-speedometer2 me-2"></i>仪表盘
+                </a>
+                <a href="{{ url_for('admin.users') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-people me-2"></i>用户管理
+                </a>
+                <a href="{{ url_for('admin.admin_rewards') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-cash-coin me-2"></i>悬赏令
+                </a>
+                <a href="{{ url_for('admin.admin_clues') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-file-earmark-text me-2"></i>线索管理
+                </a>
+                <a href="{{ url_for('admin.admin_hazards') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-exclamation-triangle me-2"></i>隐患管理
+                </a>
+                <a href="{{ url_for('admin.admin_tasks') }}" class="list-group-item list-group-item-action active">
+                    <i class="bi bi-list-check me-2"></i>任务管理
+                </a>
+                <a href="{{ url_for('admin.emergency_dispatch') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-broadcast me-2"></i>应急调度
+                </a>
+                <a href="{{ url_for('admin.admin_announcements') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-megaphone me-2"></i>公告管理
+                </a>
+                <a href="{{ url_for('admin.reward_items') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-gift me-2"></i>积分商城
+                </a>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3><i class="bi bi-list-check me-2"></i>发布新任务</h3>
+                <a href="{{ url_for('admin.admin_tasks') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>返回列表
+                </a>
+            </div>
+
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('admin.create_task') }}">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label">任务标题 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="title" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">任务类型</label>
+                                <select class="form-select" name="task_type">
+                                    <option value="patrol">巡逻任务</option>
+                                    <option value="propaganda">宣传任务</option>
+                                    <option value="emergency">应急任务</option>
+                                    <option value="investigation">调查任务</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">任务描述</label>
+                            <textarea class="form-control" name="description" rows="5" required></textarea>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">开始时间</label>
+                                <input type="datetime-local" class="form-control" name="start_time">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">结束时间</label>
+                                <input type="datetime-local" class="form-control" name="end_time">
+                            </div>
+                        </div>
+
+                        <h5 class="mt-4 mb-3">任务地点</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label">地址</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" name="location" id="location" readonly placeholder="点击地图选择位置">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="getCurrentLocation()">
+                                        <i class="bi bi-crosshair"></i> 定位
+                                    </button>
+                                </div>
+                                <input type="hidden" name="lat" id="lat">
+                                <input type="hidden" name="lng" id="lng">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">任务范围 (米)</label>
+                                <input type="number" class="form-control" name="radius" value="500">
+                            </div>
+                        </div>
+                        <div id="map-container" class="border mb-3"></div>
+
+                        <h5 class="mt-4 mb-3">奖励设置</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">积分奖励</label>
+                                <input type="number" class="form-control" name="reward_points" value="10">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">现金奖励 (¥)</label>
+                                <input type="number" class="form-control" name="reward_cash" step="0.01" value="0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">需要人数</label>
+                                <input type="number" class="form-control" name="required_people" value="1" min="1">
+                            </div>
+                        </div>
+
+                        <hr>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-success btn-lg px-5">
+                                <i class="bi bi-send me-2"></i>发布任务
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://webapi.amap.com/maps?v=2.0&key={{ amap_key }}{% if amap_security_code %}&securityCode={{ amap_security_code }}{% endif %}"></script>
+<script>
+let map, marker;
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof AMap !== 'undefined') {
+        map = new AMap.Map('map-container', {
+            zoom: 12,
+            center: [116.4074, 39.9042]
+        });
+        map.on('click', function(e) {
+            setMarker(e.lnglat.getLng(), e.lnglat.getLat());
+        });
+    }
+});
+
+function setMarker(lng, lat) {
+    if (marker) map.remove(marker);
+    marker = new AMap.Marker({ position: [lng, lat] });
+    map.add(marker);
+    document.getElementById('lat').value = lat;
+    document.getElementById('lng').value = lng;
+    document.getElementById('location').value = lng + ',' + lat;
+}
+
+function getCurrentLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+            setMarker(pos.coords.longitude, pos.coords.latitude);
+            map.setCenter([pos.coords.longitude, pos.coords.latitude]);
+        });
+    }
+}
+</script>
+{% endblock %}

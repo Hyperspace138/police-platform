@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}{{ task.title }} - 任务详情{% endblock %}
+
+{% block extra_css %}
+<style>
+#map-container {
+    height: 300px;
+    border-radius: 8px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- 任务详情卡片 -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="bi bi-list-check me-2"></i>{{ task.title }}</h4>
+                    <span class="badge bg-light text-dark">{{ task.task_no }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>任务类型：</strong>
+                                <span class="badge bg-success">{{ task.task_type }}</span>
+                            </p>
+                            <p><strong>任务状态：</strong>
+                                <span class="badge bg-{{ 'success' if task.status == 'open' else 'secondary' }}">
+                                    {{ '可抢单' if task.status == 'open' else task.status }}
+                                </span>
+                            </p>
+                            <p><strong>需要人数：</strong>{{ task.required_people }}人</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>积分奖励：</strong><span class="text-warning">+{{ task.reward_points }}积分</span></p>
+                            {% if task.reward_cash > 0 %}
+                            <p><strong>现金奖励：</strong><span class="text-danger">¥{{ "%.2f"|format(task.reward_cash) }}</span></p>
+                            {% endif %}
+                            <p><strong>任务范围：</strong>{{ task.radius }}米</p>
+                        </div>
+                    </div>
+                    
+                    {% if task.start_time and task.end_time %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-clock me-2"></i>
+                        <strong>任务时间：</strong>
+                        {{ task.start_time.strftime('%Y年%m月%d日 %H:%M') }} ~ 
+                        {{ task.end_time.strftime('%Y年%m月%d日 %H:%M') }}
+                    </div>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <h6>任务描述</h6>
+                    <p class="text-muted">{{ task.description }}</p>
+                    
+                    {% if task.location %}
+                    <hr>
+                    <h6>任务地点</h6>
+                    <p><i class="bi bi-geo-alt me-2"></i>{{ task.location }}</p>
+                    <div id="map-container" class="border"></div>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    {% if current_user.is_authenticated %}
+                        {% if has_assigned %}
+                            <div class="alert alert-info mb-0">
+                                <i class="bi bi-info-circle me-2"></i>
+                                您已{{ '完成' if assignment.status == 'completed' else '接取' }}此任务
+                                {% if assignment.status == 'assigned' %}
+                                - <span class="badge bg-warning">待开始</span>
+                                {% elif assignment.status == 'in_progress' %}
+                                - <span class="badge bg-primary">进行中</span>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            {% if task.status == 'open' %}
+                            <form method="POST" action="{{ url_for('main.claim_task', id=task.id) }}">
+                                <button type="submit" class="btn btn-success btn-lg w-100">
+                                    <i class="bi bi-hand-index-thumb me-2"></i>立即抢单
+                                </button>
+                            </form>
+                            {% else %}
+                            <button class="btn btn-secondary btn-lg w-100" disabled>
+                                <i class="bi bi-x-circle me-2"></i>任务已被抢完
+                            </button>
+                            {% endif %}
+                        {% endif %}
+                    {% else %}
+                    <div class="text-center">
+                        <p class="mb-2">请先登录后抢单</p>
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-primary">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>去登录
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <!-- 任务发布信息 -->
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>发布信息</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>发布人：</strong>{{ task.publisher.username if task.publisher else '系统' }}</p>
+                    <p class="mb-0"><strong>发布时间：</strong>{{ task.published_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+            </div>
+            
+            <!-- 任务提示 -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>任务提示</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0 small">
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>抢单后请按时完成任务</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>任务完成后上传证明照片</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>审核通过后即可获得积分</li>
+                        <li><i class="bi bi-check-circle text-success me-2"></i>积分可在商城兑换礼品</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if task.lat and task.lng %}
+<script src="https://webapi.amap.com/maps?v=2.0&key={{ amap_key }}{% if amap_security_code %}&securityCode={{ amap_security_code }}{% endif %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof AMap !== 'undefined') {
+        var map = new AMap.Map('map-container', {
+            zoom: 15,
+            center: [{{ task.lng }}, {{ task.lat }}]
+        });
+        
+        var marker = new AMap.Marker({
+            position: [{{ task.lng }}, {{ task.lat }}],
+            title: '{{ task.title }}'
+        });
+        map.add(marker);
+        
+        // 添加任务范围圆
+        var circle = new AMap.Circle({
+            center: [{{ task.lng }}, {{ task.lat }}],
+            radius: {{ task.radius }},
+            strokeColor: '#28a745',
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: '#28a745',
+            fillOpacity: 0.2
+        });
+        map.add(circle);
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

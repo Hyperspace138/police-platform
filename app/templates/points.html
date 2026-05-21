@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}积分商城 - 群防群治智慧警务平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- 积分信息 -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-warning text-dark">
+                <div class="card-body text-center">
+                    <h2 class="mb-0">{{ current_user.points }}</h2>
+                    <p class="mb-0">当前积分</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h2 class="mb-0">{{ current_user.total_points }}</h2>
+                    <p class="mb-0">累计积分</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h2 class="mb-0">{{ logs | length }}</h2>
+                    <p class="mb-0">积分记录</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- 积分商城 -->
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-gift me-2"></i>积分商城</h5>
+                </div>
+                <div class="card-body">
+                    {% if items %}
+                    <div class="row g-4">
+                        {% for item in items %}
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="card-title">{{ item.name }}</h6>
+                                            <p class="card-text small text-muted">{{ item.description or '暂无描述' }}</p>
+                                        </div>
+                                        {% if item.image %}
+                                        <img src="{{ url_for('static', filename=item.image) }}" 
+                                             alt="{{ item.name }}" style="width: 60px; height: 60px; object-fit: cover;"
+                                             onerror="this.src='https://via.placeholder.com/60'">
+                                        {% endif %}
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mt-3">
+                                        <span class="text-warning fw-bold">
+                                            <i class="bi bi-coin me-1"></i>{{ item.required_points }}积分
+                                        </span>
+                                        <span class="text-muted small">库存：{{ item.stock }}</span>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    {% if current_user.points >= item.required_points and item.stock > 0 %}
+                                    <button type="button" class="btn btn-primary btn-sm w-100" 
+                                            data-bs-toggle="modal" data-bs-target="#exchangeModal{{ item.id }}">
+                                        <i class="bi bi-cart me-1"></i>立即兑换
+                                    </button>
+                                    {% else %}
+                                    <button class="btn btn-secondary btn-sm w-100" disabled>
+                                        {% if item.stock <= 0 %}库存不足{% else %}积分不足{% endif %}
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 兑换模态框 -->
+                        <div class="modal fade" id="exchangeModal{{ item.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">兑换 {{ item.name }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form method="POST" action="{{ url_for('main.exchange_item', item_id=item.id) }}">
+                                        <div class="modal-body">
+                                            <p>您将消耗 <strong class="text-warning">{{ item.required_points }}</strong> 积分兑换 <strong>{{ item.name }}</strong></p>
+                                            
+                                            <div class="mb-3">
+                                                <label class="form-label">收货人姓名</label>
+                                                <input type="text" class="form-control" name="receiver_name" 
+                                                       value="{{ current_user.real_name or '' }}" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">联系电话</label>
+                                                <input type="tel" class="form-control" name="receiver_phone" 
+                                                       value="{{ current_user.phone }}" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">收货地址</label>
+                                                <textarea class="form-control" name="receiver_address" rows="2" required></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                            <button type="submit" class="btn btn-primary">确认兑换</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-gift display-1 text-muted"></i>
+                        <p class="mt-3 text-muted">暂无商品</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- 积分记录 -->
+        <div class="col-lg-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>积分记录</h6>
+                </div>
+                <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                    {% if logs %}
+                    <ul class="list-group list-group-flush">
+                        {% for log in logs %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <small class="d-block text-muted">{{ log.created_at.strftime('%m-%d %H:%M') }}</small>
+                                <small>{{ log.reason }}</small>
+                            </div>
+                            <span class="badge bg-{{ 'success' if log.points > 0 else 'danger' }}">
+                                {{ '+' if log.points > 0 else '' }}{{ log.points }}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <p>暂无积分记录</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- 积分获取方式 -->
+            <div class="card shadow mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>如何获取积分</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0 small">
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            提交线索 +{{ config.POINTS_CONFIG.clue_submit }}积分
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            线索被采纳 +{{ config.POINTS_CONFIG.clue_adopted }}积分
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            完成任务 +{{ config.POINTS_CONFIG.task_complete }}积分
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            巡逻打卡 +{{ config.POINTS_CONFIG.patrol_checkin }}积分
+                        </li>
+                        <li>
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            应急响应 +{{ config.POINTS_CONFIG.emergency_response }}积分
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

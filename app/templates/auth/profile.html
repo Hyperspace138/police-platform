@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}个人中心 - 群防群治智慧警务平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <!-- 左侧信息栏 -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-person-circle me-2"></i>个人信息</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <img src="{{ url_for('static', filename='uploads/avatars/' + current_user.avatar) }}" 
+                             alt="头像" class="rounded-circle" width="100" height="100"
+                             onerror="this.src='https://via.placeholder.com/100'">
+                    </div>
+                    <h5>{{ current_user.username }}</h5>
+                    <p class="text-muted">
+                        <span class="badge bg-secondary">{{ config.USER_ROLES.get(current_user.role, '普通用户') }}</span>
+                    </p>
+                    <div class="d-flex justify-content-center gap-2 mb-3">
+                        <div class="text-center">
+                            <div class="h4 mb-0 text-warning">{{ current_user.points }}</div>
+                            <small class="text-muted">当前积分</small>
+                        </div>
+                        <div class="vr"></div>
+                        <div class="text-center">
+                            <div class="h4 mb-0 text-success">{{ current_user.total_points }}</div>
+                            <small class="text-muted">累计积分</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="text-start small">
+                        <p class="mb-1"><i class="bi bi-phone me-2"></i>{{ current_user.phone }}</p>
+                        {% if current_user.email %}
+                        <p class="mb-1"><i class="bi bi-envelope me-2"></i>{{ current_user.email }}</p>
+                        {% endif %}
+                        {% if current_user.real_name %}
+                        <p class="mb-1"><i class="bi bi-person-badge me-2"></i>{{ current_user.real_name }}</p>
+                        {% endif %}
+                        <p class="mb-1">
+                            <i class="bi bi-shield-check me-2"></i>
+                            {% if current_user.is_verified %}
+                            <span class="text-success">已实名认证</span>
+                            {% else %}
+                            <span class="text-warning">未实名认证</span>
+                            <a href="{{ url_for('auth.verify_identity') }}" class="small">去认证</a>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('auth.edit_profile') }}" class="btn btn-outline-primary btn-sm w-100">
+                        <i class="bi bi-pencil me-1"></i>编辑资料
+                    </a>
+                </div>
+            </div>
+            
+            <!-- 快速操作 -->
+            <div class="card shadow mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">快速操作</h6>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{{ url_for('main.submit_clue') }}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-camera me-2 text-primary"></i>提交线索
+                    </a>
+                    <a href="{{ url_for('main.hazards') }}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-exclamation-triangle me-2 text-warning"></i>上报隐患
+                    </a>
+                    <a href="{{ url_for('main.tasks') }}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-list-check me-2 text-success"></i>任务抢单
+                    </a>
+                    <a href="{{ url_for('main.points') }}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-gift me-2 text-info"></i>积分商城
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 右侧内容区 -->
+        <div class="col-lg-8">
+            <!-- 我的线索 -->
+            <div class="card shadow mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>我的线索</h5>
+                    <a href="{{ url_for('main.submit_clue') }}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus me-1"></i>提交新线索
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if clues %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>线索编号</th>
+                                    <th>类型</th>
+                                    <th>状态</th>
+                                    <th>提交时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for clue in clues %}
+                                <tr>
+                                    <td><code>{{ clue.clue_no }}</code></td>
+                                    <td>{{ clue.clue_type or '一般线索' }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if clue.status == 'rewarded' else ('primary' if clue.status == 'closed' else 'warning') }}">
+                                            {{ config.CLUE_STATUS.get(clue.status, clue.status) }}
+                                        </span>
+                                    </td>
+                                    <td>{{ clue.submitted_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('main.clue_status', clue_no=clue.clue_no) }}" class="btn btn-sm btn-outline-primary">
+                                            查看
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox display-4"></i>
+                        <p class="mt-2">暂无线索记录</p>
+                        <a href="{{ url_for('main.submit_clue') }}" class="btn btn-primary btn-sm">去提交线索</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- 我的任务 -->
+            <div class="card shadow mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>我的任务</h5>
+                    <a href="{{ url_for('main.tasks') }}" class="btn btn-success btn-sm">
+                        <i class="bi bi-plus me-1"></i>抢新任务
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if tasks %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>任务</th>
+                                    <th>状态</th>
+                                    <th>接单时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in tasks %}
+                                <tr>
+                                    <td>{{ task.task.title }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if task.status == 'completed' else ('primary' if task.status == 'in_progress' else 'secondary') }}">
+                                            {{ config.TASK_STATUS.get(task.status, task.status) }}
+                                        </span>
+                                    </td>
+                                    <td>{{ task.assigned_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('main.task_detail', id=task.task_id) }}" class="btn btn-sm btn-outline-primary">
+                                            查看
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox display-4"></i>
+                        <p class="mt-2">暂无任务记录</p>
+                        <a href="{{ url_for('main.tasks') }}" class="btn btn-success btn-sm">去抢任务</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- 积分记录 -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-coin me-2"></i>积分记录</h5>
+                </div>
+                <div class="card-body">
+                    {% if point_logs %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>时间</th>
+                                    <th>变动</th>
+                                    <th>原因</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in point_logs %}
+                                <tr>
+                                    <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <span class="text-{{ 'success' if log.points > 0 else 'danger' }}">
+                                            {{ '+' if log.points > 0 else '' }}{{ log.points }}
+                                        </span>
+                                    </td>
+                                    <td>{{ log.reason }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <p>暂无积分记录</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}加入志愿者 - 群防群治智慧警务平台{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0"><i class="bi bi-person-plus me-2"></i>成为平安合伙人</h4>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-info-circle me-2"></i>欢迎加入群防群治队伍</h6>
+                        <p class="mb-0">
+                            无论您是保安员、网格员、环卫工、外卖员，还是热心市民，
+                            都可以加入我们的队伍，共同守护社区平安。
+                        </p>
+                    </div>
+                    
+                    <form method="POST" action="{{ url_for('main.volunteer_register') }}">
+                        <!-- 身份类型 -->
+                        <div class="mb-4">
+                            <label class="form-label">选择您的身份类型 <span class="text-danger">*</span></label>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="form-check card p-3">
+                                        <input class="form-check-input" type="radio" name="role" id="role_security" value="security" required>
+                                        <label class="form-check-label w-100" for="role_security">
+                                            <i class="bi bi-shield me-2 text-primary"></i>
+                                            <strong>安保人员</strong>
+                                            <small class="d-block text-muted">保安、物业等</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check card p-3">
+                                        <input class="form-check-input" type="radio" name="role" id="role_grid_worker" value="grid_worker">
+                                        <label class="form-check-label w-100" for="role_grid_worker">
+                                            <i class="bi bi-grid me-2 text-success"></i>
+                                            <strong>网格员</strong>
+                                            <small class="d-block text-muted">社区网格员</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check card p-3">
+                                        <input class="form-check-input" type="radio" name="role" id="role_cloud_sentinel" value="cloud_sentinel">
+                                        <label class="form-check-label w-100" for="role_cloud_sentinel">
+                                            <i class="bi bi-broadcast me-2 text-warning"></i>
+                                            <strong>云哨兵</strong>
+                                            <small class="d-block text-muted">外卖员、快递员等</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 工作单位 -->
+                        <div class="mb-3">
+                            <label for="work_unit" class="form-label">工作单位</label>
+                            <input type="text" class="form-control" id="work_unit" name="work_unit" 
+                                   placeholder="请输入您的单位名称">
+                        </div>
+                        
+                        <!-- 工作地址 -->
+                        <div class="mb-3">
+                            <label for="work_address" class="form-label">工作地址</label>
+                            <input type="text" class="form-control" id="work_address" name="work_address" 
+                                   placeholder="请输入您的工作地址">
+                        </div>
+                        
+                        <!-- 紧急联系人 -->
+                        <div class="mb-3">
+                            <label for="emergency_contact" class="form-label">紧急联系人电话</label>
+                            <input type="tel" class="form-control" id="emergency_contact" name="emergency_contact" 
+                                   placeholder="请输入紧急联系人电话">
+                            <div class="form-text">用于紧急情况联系</div>
+                        </div>
+                        
+                        <!-- 志愿者须知 -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="agree" name="agree" required>
+                                <label class="form-check-label" for="agree">
+                                    我已阅读并同意 <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">志愿者服务协议</a>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-circle me-2"></i>提交申请
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 志愿者服务协议模态框 -->
+<div class="modal fade" id="termsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">志愿者服务协议</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>一、服务内容</h6>
+                <p>志愿者参与群防群治工作，包括但不限于巡逻防控、线索举报、应急支援等。</p>
+                
+                <h6>二、服务要求</h6>
+                <p>志愿者应遵守法律法规，服从公安机关指挥，不得超越职权范围行事。</p>
+                
+                <h6>三、权益保障</h6>
+                <p>志愿者享有积分奖励、表彰奖励等权益，公安机关将为志愿者提供必要的培训和保障。</p>
+                
+                <h6>四、隐私保护</h6>
+                <p>平台严格保护志愿者个人信息，未经本人同意不得向第三方透露。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

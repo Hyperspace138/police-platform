@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}悬赏令管理 - 群防群治智慧警务平台{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-2 mb-4">
+            <div class="list-group shadow">
+                <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-speedometer2 me-2"></i>仪表盘
+                </a>
+                <a href="{{ url_for('admin.users') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-people me-2"></i>用户管理
+                </a>
+                <a href="{{ url_for('admin.admin_rewards') }}" class="list-group-item list-group-item-action active">
+                    <i class="bi bi-cash-coin me-2"></i>悬赏令
+                </a>
+                <a href="{{ url_for('admin.admin_clues') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-file-earmark-text me-2"></i>线索管理
+                </a>
+                <a href="{{ url_for('admin.admin_hazards') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-exclamation-triangle me-2"></i>隐患管理
+                </a>
+                <a href="{{ url_for('admin.admin_tasks') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-list-check me-2"></i>任务管理
+                </a>
+                <a href="{{ url_for('admin.emergency_dispatch') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-broadcast me-2"></i>应急调度
+                </a>
+                <a href="{{ url_for('admin.admin_announcements') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-megaphone me-2"></i>公告管理
+                </a>
+                <a href="{{ url_for('admin.reward_items') }}" class="list-group-item list-group-item-action">
+                    <i class="bi bi-gift me-2"></i>积分商城
+                </a>
+            </div>
+        </div>
+
+        <div class="col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3><i class="bi bi-cash-coin me-2"></i>悬赏令管理</h3>
+                <a href="{{ url_for('admin.create_reward') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i>发布新悬赏
+                </a>
+            </div>
+
+            <!-- 状态筛选 -->
+            <div class="card shadow mb-4">
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('admin.admin_rewards') }}" class="row">
+                        <div class="col-md-3">
+                            <select name="status" class="form-select" onchange="this.form.submit()">
+                                <option value="">全部状态</option>
+                                {% for code, name in statuses.items() %}
+                                <option value="{{ code }}" {{ 'selected' if request.args.get('status')==code else '' }}>{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 悬赏列表 -->
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>标题</th>
+                                    <th>案件类型</th>
+                                    <th>悬赏金额</th>
+                                    <th>状态</th>
+                                    <th>发布时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reward in rewards %}
+                                <tr>
+                                    <td>{{ reward.id }}</td>
+                                    <td>{{ reward.title }}</td>
+                                    <td>{{ reward.case_type }}</td>
+                                    <td>¥{{ "%.0f"|format(reward.reward_amount) }}</td>
+                                    <td><span class="badge bg-{{ 'success' if reward.status=='active' else 'secondary' }}">{{ statuses.get(reward.status, reward.status) }}</span></td>
+                                    <td>{{ reward.published_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('admin.edit_reward', id=reward.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteReward({{ reward.id }})"><i class="bi bi-trash"></i></button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 分页 -->
+                    {% if pagination.pages > 1 %}
+                    <nav class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if pagination.has_prev %}
+                            <li class="page-item"><a class="page-link" href="{{ url_for('admin.admin_rewards', page=pagination.prev_num, status=request.args.get('status')) }}">上一页</a></li>
+                            {% endif %}
+                            {% for p in pagination.iter_pages() %}
+                                {% if p %}
+                                <li class="page-item {{ 'active' if p == pagination.page else '' }}"><a class="page-link" href="{{ url_for('admin.admin_rewards', page=p, status=request.args.get('status')) }}">{{ p }}</a></li>
+                                {% else %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                {% endif %}
+                            {% endfor %}
+                            {% if pagination.has_next %}
+                            <li class="page-item"><a class="page-link" href="{{ url_for('admin.admin_rewards', page=pagination.next_num, status=request.args.get('status')) }}">下一页</a></li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function deleteReward(id) {
+    if (confirm('确定要取消该悬赏令吗？')) {
+        fetch(`/admin/reward/${id}/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        }).then(() => location.reload());
+    }
+}
+</script>
+{% endblock %}
