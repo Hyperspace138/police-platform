@@ -54,6 +54,10 @@ logs/
 .env.local
 .env.*.local
 
+# Claude Code
+CLAUDE.md
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db

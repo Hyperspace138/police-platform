@@ -72,43 +72,22 @@
 
 ## 快速开始
 
+本项目使用 SQLite 数据库，无需额外安装数据库软件，开箱即用。
+
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/your-repo/police-platform.git
+git clone https://github.com/Hyperspace138/police-platform.git
 cd police-platform
 ```
 
-### 2. 创建虚拟环境
-
-```bash
-python3 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-```
-
-### 3. 安装依赖
+### 2. 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. 配置环境变量
-
-```bash
-cp .env.example .env
-# 编辑 .env 文件，配置数据库和地图API Key
-```
-
-### 5. 初始化数据库
-
-```bash
-export FLASK_APP=run.py
-flask db init
-flask db migrate
-flask db upgrade
-```
-
-### 6. 运行应用
+### 3. 运行应用
 
 ```bash
 python run.py
@@ -116,7 +95,11 @@ python run.py
 
 访问 http://localhost:5000 即可使用。
 
-默认管理员账号：`admin` / `admin123`
+> **默认管理员账号**：`admin` / `admin123`
+>
+> 数据库文件 `app.db` 和用户上传的文件已配置在 `.gitignore` 中，不会包含在仓库内。首次运行时会自动创建 SQLite 数据库和管理员账号。
+>
+> 如需自定义管理员账号或配置高德地图 API Key，可复制 `.env.example` 为 `.env` 后修改对应配置项。不配置地图 Key 不影响基本功能使用。
 
 ## 项目结构
 
@@ -217,26 +200,24 @@ police-platform/
 sudo apt update
 sudo apt install python3 python3-pip python3-venv nginx -y
 
-# 2. 上传项目到 /var/www/police-platform
+# 2. 克隆项目
+git clone https://github.com/Hyperspace138/police-platform.git
+cd police-platform
 
-# 3. 创建虚拟环境并安装依赖
-cd /var/www/police-platform
-python3 -m venv venv
-source venv/bin/activate
+# 3. 安装 Python 依赖
 pip install -r requirements.txt
 
-# 4. 配置环境变量
+# 4. （可选）配置环境变量
 cp .env.example .env
-nano .env
+nano .env  # 修改高德地图 Key 等配置
 
-# 5. 初始化数据库
-export FLASK_APP=run.py
-flask db upgrade
-flask deploy
-
-# 6. 启动服务
+# 5. 启动服务
 python run.py
 ```
+
+访问 http://your-server-ip:5000 即可使用，默认管理员账号 admin / admin123。
+
+生产环境建议使用 Gunicorn + Nginx，详见 [docs/DEPLOY.md](docs/DEPLOY.md)。
 
 ## 配置说明
 
