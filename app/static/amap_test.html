@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>AMap Test</title></head>
+<body>
+<h2>AMap Test</h2>
+<div id="container" style="width:600px;height:400px;"></div>
+<div id="status"></div>
+<script>
+window._AMapSecurityConfig = { securityJsCode: '64f4424e7165581672bcbfde773e390a' };
+</script>
+<script src="https://webapi.amap.com/maps?v=2.0&key=d9d1c7a2f24e696537efad04678f1db9&securityCode=64f4424e7165581672bcbfde773e390a"></script>
+<script>
+document.getElementById('status').textContent = 'Script loaded, AMap defined: ' + (typeof AMap !== 'undefined');
+if (typeof AMap !== 'undefined') {
+    try {
+        var map = new AMap.Map('container', { zoom: 13, center: [116.4074, 39.9042] });
+        document.getElementById('status').textContent += ' | Map created OK';
+    } catch(e) {
+        document.getElementById('status').textContent += ' | Error: ' + e.message;
+    }
+}
+</script>
+</body></html>
