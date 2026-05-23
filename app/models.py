@@ -46,9 +46,6 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(20), unique=True, index=True)
     email = db.Column(db.String(120), unique=True, nullable=True)
 
-    # 外地手机号（非中国大陆）
-    phone_region = db.Column(db.String(10), default='CN')
-
     password_hash = db.Column(db.String(256))
 
     # 用户类型
