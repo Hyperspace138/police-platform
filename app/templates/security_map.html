@@ -56,6 +56,37 @@
 <script>
 var map, hazardMarkers = [], securityMarkers = [], userMarker;
 
+function circleIcon(color, size) {
+    size = size || 24;
+    var c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    var ctx = c.getContext('2d');
+    ctx.beginPath();
+    ctx.arc(size/2, size/2, size/2 - 3, 0, 2 * Math.PI);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(size/2, size/2, size/2 - 4, 0, 2 * Math.PI);
+    ctx.fillStyle = color;
+    ctx.fill();
+    return new AMap.Icon({
+        size: new AMap.Size(size, size),
+        image: c.toDataURL(),
+        imageSize: new AMap.Size(size, size)
+    });
+}
+
+var ICONS = {
+    urgent: circleIcon('#dc3545', 28),
+    high: circleIcon('#fd7e14', 24),
+    normal: circleIcon('#ffc107', 24),
+    resolved: circleIcon('#198754', 22),
+    security: circleIcon('#0d6efd', 28)
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     if (typeof AMap === 'undefined') {
         document.getElementById('map-container').innerHTML = '<div class="d-flex align-items-center justify-content-center h-100 text-muted"><div class="text-center"><i class="bi bi-exclamation-triangle display-1"></i><p class="mt-2">地图加载失败，请检查高德地图API Key配置</p></div></div>';
@@ -86,16 +117,14 @@ function loadHazards() {
 }
 
 function addHazardMarker(hazard) {
-    var color = hazard.urgency === 'urgent' ? 'r' : (hazard.urgency === 'high' ? 'o' : (hazard.status === 'resolved' ? 'g' : 'y'));
+    var icon = hazard.urgency === 'urgent' ? ICONS.urgent :
+               hazard.urgency === 'high' ? ICONS.high :
+               hazard.status === 'resolved' ? ICONS.resolved : ICONS.normal;
     var marker = new AMap.Marker({
         position: [hazard.lng, hazard.lat],
         title: hazard.type,
-        icon: new AMap.Icon({
-            size: new AMap.Size(25, 34),
-            image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b' + color + '.png',
-            imageSize: new AMap.Size(25, 34)
-        }),
-        offset: new AMap.Pixel(-12, -34)
+        icon: icon,
+        offset: new AMap.Pixel(-12, -17)
     });
     var statusText = hazard.status === 'resolved' ? '已解决' : (hazard.urgency === 'urgent' ? '紧急' : '待处理');
     var infoWin = new AMap.InfoWindow({
@@ -124,12 +153,8 @@ function addSecurityMarker(person) {
     var marker = new AMap.Marker({
         position: [person.lng, person.lat],
         title: person.real_name,
-        icon: new AMap.Icon({
-            size: new AMap.Size(30, 30),
-            image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png',
-            imageSize: new AMap.Size(30, 30)
-        }),
-        offset: new AMap.Pixel(-15, -30)
+        icon: ICONS.security,
+        offset: new AMap.Pixel(-14, -14)
     });
     var dutyBadge = person.is_on_duty ? '<span style=\"color:#198754;\">● 值班中</span>' : '<span style=\"color:#999;\">○ 已下班</span>';
     var infoWin = new AMap.InfoWindow({
@@ -149,7 +174,7 @@ function locateMe() {
         if (userMarker) userMarker.setMap(null);
         userMarker = new AMap.Marker({
             position: [lng, lat],
-            icon: new AMap.Icon({ size: new AMap.Size(30, 30), image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png', imageSize: new AMap.Size(30, 30) }),
+            icon: circleIcon('#dc3545', 30),
             title: '我的位置'
         });
         userMarker.setMap(map);

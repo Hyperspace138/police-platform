@@ -308,6 +308,29 @@
 {% block extra_js %}
 <script src="https://webapi.amap.com/maps?v=2.0&key={{ amap_key }}{% if amap_security_code %}&securityCode={{ amap_security_code }}{% endif %}"></script>
 <script>
+function circleIcon(color, size) {
+    size = size || 24;
+    var c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    var ctx = c.getContext('2d');
+    ctx.beginPath();
+    ctx.arc(size/2, size/2, size/2 - 3, 0, 2 * Math.PI);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(size/2, size/2, size/2 - 4, 0, 2 * Math.PI);
+    ctx.fillStyle = color;
+    ctx.fill();
+    return new AMap.Icon({
+        size: new AMap.Size(size, size),
+        image: c.toDataURL(),
+        imageSize: new AMap.Size(size, size)
+    });
+}
+
 // 数字滚动动画
 function animateNumbers() {
     document.querySelectorAll('.stat-number[data-target]').forEach(function(el) {
@@ -338,14 +361,12 @@ function initMiniMap() {
         if (hazardPoints.length > 0) {
             var markers = [];
             hazardPoints.forEach(function(point) {
+                var color = point.status === 'resolved' ? '#198754' : '#ffc107';
                 var marker = new AMap.Marker({
                     position: [point.lng, point.lat],
                     title: point.type,
-                    icon: new AMap.Icon({
-                        size: new AMap.Size(25, 34),
-                        image: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_' +
-                               (point.status === 'resolved' ? 'g' : 'y') + '.png'
-                    })
+                    icon: circleIcon(color, 24),
+                    offset: new AMap.Pixel(-12, -12)
                 });
                 markers.push(marker);
             });
