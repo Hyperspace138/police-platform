@@ -200,6 +200,13 @@
     });
     </script>
     
+    {% if amap_security_code %}
+    <script>
+    window._AMapSecurityConfig = {
+        securityJsCode: '{{ amap_security_code }}'
+    };
+    </script>
+    {% endif %}
     {% block extra_js %}{% endblock %}
 </body>
 </html>
