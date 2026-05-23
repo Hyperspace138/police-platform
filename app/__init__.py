@@ -85,12 +85,19 @@ def create_app(config_name='default'):
     # 配置安全响应头 (Talisman)
     csp = {
         'default-src': ["'self'"],
-        'script-src': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net',
-                       'https://webapi.amap.com', 'https://restapi.amap.com'],
-        'style-src': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
-        'img-src': ["'self'", 'data:', 'blob:', 'https://webapi.amap.com', 'https://images.unsplash.com'],
-        'connect-src': ["'self'", 'https://restapi.amap.com'],
+        'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'",
+                       'https://cdn.jsdelivr.net', 'https://webapi.amap.com',
+                       'https://restapi.amap.com', 'https://vdata.amap.com'],
+        'style-src': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net',
+                      'https://webapi.amap.com'],
+        'img-src': ["'self'", 'data:', 'blob:',
+                    'https://webapi.amap.com', 'https://vdata.amap.com',
+                    'https://images.unsplash.com'],
+        'connect-src': ["'self'", 'wss:', 'https://restapi.amap.com',
+                        'https://webapi.amap.com', 'https://vdata.amap.com'],
         'font-src': ["'self'", 'https://cdn.jsdelivr.net'],
+        'worker-src': ["'self'", 'blob:'],
+        'child-src': ["'self'", 'blob:'],
     }
     Talisman(app, content_security_policy=csp, force_https=False,
              session_cookie_secure=False)
