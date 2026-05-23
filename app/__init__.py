@@ -88,7 +88,7 @@ def create_app(config_name='default'):
         'script-src': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net',
                        'https://webapi.amap.com', 'https://restapi.amap.com'],
         'style-src': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
-        'img-src': ["'self'", 'data:', 'blob:', 'https://webapi.amap.com'],
+        'img-src': ["'self'", 'data:', 'blob:', 'https://webapi.amap.com', 'https://images.unsplash.com'],
         'connect-src': ["'self'", 'https://restapi.amap.com'],
         'font-src': ["'self'", 'https://cdn.jsdelivr.net'],
     }
