@@ -129,6 +129,29 @@
 <!-- 高德地图API -->
 <script src="https://webapi.amap.com/maps?v=2.0&key={{ amap_key }}{% if amap_security_code %}&securityCode={{ amap_security_code }}{% endif %}"></script>
 <script>
+function circleIcon(color, size) {
+    size = size || 24;
+    var c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    var ctx = c.getContext('2d');
+    ctx.beginPath();
+    ctx.arc(size/2, size/2, size/2 - 3, 0, 2 * Math.PI);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(size/2, size/2, size/2 - 4, 0, 2 * Math.PI);
+    ctx.fillStyle = color;
+    ctx.fill();
+    return new AMap.Icon({
+        size: new AMap.Size(size, size),
+        image: c.toDataURL(),
+        imageSize: new AMap.Size(size, size)
+    });
+}
+
 let map, marker;
 
 // 初始化地图
@@ -157,7 +180,9 @@ function setMarker(lng, lat) {
         map.remove(marker);
     }
     marker = new AMap.Marker({
-        position: [lng, lat]
+        position: [lng, lat],
+        icon: circleIcon('#dc3545', 28),
+        offset: new AMap.Pixel(-14, -14)
     });
     map.add(marker);
     
