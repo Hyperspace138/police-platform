@@ -183,10 +183,12 @@ def create_reward():
         if 'suspect_photo' in request.files:
             file = request.files['suspect_photo']
             if file and file.filename:
-                from werkzeug.utils import secure_filename
-                import os
-                filename = secure_filename(file.filename)
-                unique_name = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
+                from app.utils.validators import validate_uploaded_file
+                valid, msg, safe_name = validate_uploaded_file(file)
+                if not valid:
+                    flash(msg, 'danger')
+                    return redirect(url_for('admin.create_reward'))
+                unique_name = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe_name}"
                 file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'rewards', unique_name)
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
                 file.save(file_path)
@@ -563,30 +565,21 @@ def create_announcement():
             published_by=current_user.id
         )
 
-        # 处理封面图片上传（安全验证）
+        # 处理封面图片上传
         if 'cover_image' in request.files:
             file = request.files['cover_image']
             if file and file.filename:
-                from werkzeug.utils import secure_filename
-                import os
-                # 验证文件扩展名（仅允许图片格式）
-                allowed_ext = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-                ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
-                if ext not in allowed_ext:
-                    flash('仅支持 PNG/JPG/JPEG/GIF/WEBP 图片格式', 'danger')
+                from app.utils.validators import validate_uploaded_file
+                valid, msg, safe_name = validate_uploaded_file(file)
+                if not valid:
+                    flash(msg, 'danger')
                     return redirect(url_for('admin.create_announcement'))
-                # 验证MIME类型
-                import mimetypes
-                mime = mimetypes.guess_type(file.filename)[0] or ''
-                if not mime.startswith('image/'):
-                    flash('文件类型不安全，仅允许上传图片', 'danger')
-                    return redirect(url_for('admin.create_announcement'))
-                # 生成安全文件名（不带原始扩展名，统一用安全扩展名）
-                safe_name = f"cover_{datetime.now().strftime('%Y%m%d%H%M%S')}_{str(uuid.uuid4())[:8]}.{ext}"
-                file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'announcements', safe_name)
+                ext = safe_name.rsplit('.', 1)[-1].lower() if '.' in safe_name else 'jpg'
+                cover_name = f"cover_{datetime.now().strftime('%Y%m%d%H%M%S')}_{str(uuid.uuid4())[:8]}.{ext}"
+                file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'announcements', cover_name)
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
                 file.save(file_path)
-                announcement.cover_image = f'uploads/announcements/{safe_name}'
+                announcement.cover_image = f'uploads/announcements/{cover_name}'
 
         db.session.add(announcement)
         db.session.commit()
@@ -612,19 +605,17 @@ def edit_announcement(id):
         if 'cover_image' in request.files:
             file = request.files['cover_image']
             if file and file.filename:
-                from werkzeug.utils import secure_filename
-                import os, mimetypes
-                allowed_ext = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-                ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
-                mime = mimetypes.guess_type(file.filename)[0] or ''
-                if ext not in allowed_ext or not mime.startswith('image/'):
-                    flash('仅支持图片格式文件', 'danger')
+                from app.utils.validators import validate_uploaded_file
+                valid, msg, safe_name = validate_uploaded_file(file)
+                if not valid:
+                    flash(msg, 'danger')
                     return redirect(url_for('admin.edit_announcement', id=id))
-                safe_name = f"cover_{datetime.now().strftime('%Y%m%d%H%M%S')}_{str(uuid.uuid4())[:8]}.{ext}"
-                file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'announcements', safe_name)
+                ext = safe_name.rsplit('.', 1)[-1].lower() if '.' in safe_name else 'jpg'
+                cover_name = f"cover_{datetime.now().strftime('%Y%m%d%H%M%S')}_{str(uuid.uuid4())[:8]}.{ext}"
+                file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'announcements', cover_name)
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
                 file.save(file_path)
-                announcement.cover_image = f'uploads/announcements/{safe_name}'
+                announcement.cover_image = f'uploads/announcements/{cover_name}'
 
         db.session.commit()
         flash('公告已更新', 'success')

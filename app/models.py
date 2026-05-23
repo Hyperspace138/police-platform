@@ -2,73 +2,111 @@
 """
 群防群治智慧警务平台 - 数据库模型
 """
+import os
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+from cryptography.fernet import Fernet
 from app import db
 import uuid
+
+# ID card encryption setup
+_ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY')
+if _ENCRYPTION_KEY:
+    _fernet = Fernet(_ENCRYPTION_KEY.encode() if isinstance(_ENCRYPTION_KEY, str) else _ENCRYPTION_KEY)
+else:
+    _fernet = None
+
+
+def encrypt_id_card(plaintext):
+    """加密身份证号"""
+    if not plaintext or not _fernet:
+        return plaintext
+    return _fernet.encrypt(plaintext.encode()).decode()
+
+
+def decrypt_id_card(ciphertext):
+    """解密身份证号"""
+    if not ciphertext or not _fernet:
+        return ciphertext
+    try:
+        return _fernet.decrypt(ciphertext.encode()).decode()
+    except Exception:
+        return ciphertext
 
 
 # 用户模型
 class User(UserMixin, db.Model):
     """用户表"""
     __tablename__ = 'users'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, index=True)
     phone = db.Column(db.String(20), unique=True, index=True)
     email = db.Column(db.String(120), unique=True, nullable=True)
+
+    # 外地手机号（非中国大陆）
+    phone_region = db.Column(db.String(10), default='CN')
+
     password_hash = db.Column(db.String(256))
-    
+
     # 用户类型
-    role = db.Column(db.String(20), default='citizen')  # citizen, volunteer, security, grid_worker, cloud_sentinel, admin, police
-    
-    # 实名认证信息
+    role = db.Column(db.String(20), default='citizen', index=True)
+
+    # 实名认证信息（身份证号加密存储）
     real_name = db.Column(db.String(64), nullable=True)
-    id_card = db.Column(db.String(18), nullable=True)  # 身份证号（加密存储）
-    is_verified = db.Column(db.Boolean, default=False)  # 是否实名认证
-    
+    _id_card_encrypted = db.Column('id_card', db.String(256), nullable=True)
+    is_verified = db.Column(db.Boolean, default=False)
+
     # 头像
     avatar = db.Column(db.String(256), default='default_avatar.png')
-    
+
     # 积分系统
     points = db.Column(db.Integer, default=0)
-    total_points = db.Column(db.Integer, default=0)  # 累计积分
-    
+    total_points = db.Column(db.Integer, default=0)
+
     # 状态
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     last_login = db.Column(db.DateTime, nullable=True)
-    
+
     # 关联
     clues = db.relationship('Clue', foreign_keys='Clue.reporter_id', backref='reporter', lazy='dynamic')
     tasks = db.relationship('TaskAssignment', foreign_keys='TaskAssignment.user_id', backref='assignee', lazy='dynamic')
     rewards = db.relationship('RewardClaim', backref='claimer', lazy='dynamic')
+
     # 安保人员/网格员额外信息
-    work_unit = db.Column(db.String(128), nullable=True)  # 工作单位
-    work_address = db.Column(db.String(256), nullable=True)  # 工作地址
-    emergency_contact = db.Column(db.String(20), nullable=True)  # 紧急联系人
-    lat = db.Column(db.Float, nullable=True)  # 纬度
-    lng = db.Column(db.Float, nullable=True)  # 经度
-    is_on_duty = db.Column(db.Boolean, default=False)  # 是否值班
-    last_checkin = db.Column(db.DateTime, nullable=True)  # 最后打卡时间
-    
+    work_unit = db.Column(db.String(128), nullable=True)
+    work_address = db.Column(db.String(256), nullable=True)
+    emergency_contact = db.Column(db.String(20), nullable=True)
+    lat = db.Column(db.Float, nullable=True)
+    lng = db.Column(db.Float, nullable=True)
+    is_on_duty = db.Column(db.Boolean, default=False)
+    last_checkin = db.Column(db.DateTime, nullable=True)
+
+    @property
+    def id_card(self):
+        return decrypt_id_card(self._id_card_encrypted)
+
+    @id_card.setter
+    def id_card(self, value):
+        self._id_card_encrypted = encrypt_id_card(value)
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
-    
+
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-    
+
     def add_points(self, points, reason=''):
         """增加积分"""
         self.points += points
         self.total_points += points
-        # 记录积分变动
         point_log = PointLog(user_id=self.id, points=points, reason=reason)
         db.session.add(point_log)
         db.session.commit()
-    
+
     def __repr__(self):
         return f'<User {self.username}>'
 
@@ -77,13 +115,13 @@ class User(UserMixin, db.Model):
 class PointLog(db.Model):
     """积分变动记录"""
     __tablename__ = 'point_logs'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    points = db.Column(db.Integer)  # 正数为增加，负数为减少
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
+    points = db.Column(db.Integer)
     reason = db.Column(db.String(256))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
     user = db.relationship('User', backref='point_logs')
 
 
@@ -91,44 +129,34 @@ class PointLog(db.Model):
 class Reward(db.Model):
     """悬赏令表"""
     __tablename__ = 'rewards'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(128))
     content = db.Column(db.Text)
-    
-    # 案件类型
-    case_type = db.Column(db.String(50))  # 刑事案件、治安案件、寻人启事、失物招领等
-    
-    # 悬赏金额
+
+    case_type = db.Column(db.String(50), index=True)
     reward_amount = db.Column(db.Float, default=0)
-    reward_type = db.Column(db.String(20), default='cash')  # cash, points
-    
-    # 嫌疑人/目标信息
+    reward_type = db.Column(db.String(20), default='cash')
+
     suspect_name = db.Column(db.String(64), nullable=True)
     suspect_description = db.Column(db.Text, nullable=True)
     suspect_photo = db.Column(db.String(256), nullable=True)
-    
-    # 案发地点
+
     location = db.Column(db.String(256), nullable=True)
     lat = db.Column(db.Float, nullable=True)
     lng = db.Column(db.Float, nullable=True)
-    
-    # 状态
-    status = db.Column(db.String(20), default='active')  # active, pending, completed, cancelled
-    
-    # 发布信息
-    published_by = db.Column(db.Integer, db.ForeignKey('users.id'))
-    published_at = db.Column(db.DateTime, default=datetime.utcnow)
-    deadline = db.Column(db.DateTime, nullable=True)  # 截止日期
-    
-    # 浏览量
+
+    status = db.Column(db.String(20), default='active', index=True)
+
+    published_by = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
+    published_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    deadline = db.Column(db.DateTime, nullable=True)
+
     view_count = db.Column(db.Integer, default=0)
-    
-    # 关联
+
     clues = db.relationship('Clue', backref='reward', lazy='dynamic')
-    
     publisher = db.relationship('User', foreign_keys=[published_by])
-    
+
     def __repr__(self):
         return f'<Reward {self.title}>'
 
@@ -137,72 +165,55 @@ class Reward(db.Model):
 class Clue(db.Model):
     """线索举报表"""
     __tablename__ = 'clues'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    
-    # 线索编号（对外展示）
     clue_no = db.Column(db.String(32), unique=True, index=True)
-    
-    # 关联悬赏令（可为空，普通举报）
-    reward_id = db.Column(db.Integer, db.ForeignKey('rewards.id'), nullable=True)
-    
-    # 举报人
-    reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    
-    # 匿名举报
+
+    reward_id = db.Column(db.Integer, db.ForeignKey('rewards.id'), nullable=True, index=True)
+    reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+
     is_anonymous = db.Column(db.Boolean, default=False)
-    anonymous_code = db.Column(db.String(32), nullable=True)  # 匿名查询码
-    
-    # 举报内容
+    anonymous_code = db.Column(db.String(32), nullable=True)
+
     content = db.Column(db.Text)
-    
-    # 线索类型（AI识别或用户选择）
-    clue_type = db.Column(db.String(50), nullable=True)  # 消防隐患、治安问题、刑事案件等
-    
-    # 位置信息
+
+    clue_type = db.Column(db.String(50), nullable=True)
+
     location = db.Column(db.String(256), nullable=True)
     lat = db.Column(db.Float, nullable=True)
     lng = db.Column(db.Float, nullable=True)
-    address_from_gps = db.Column(db.String(256), nullable=True)  # GPS解析的地址
-    
-    # 媒体文件（JSON数组存储多个文件路径）
+    address_from_gps = db.Column(db.String(256), nullable=True)
+
     media_files = db.Column(db.Text, default='[]')
-    
-    # 联系方式（匿名举报时可选）
+
     contact_phone = db.Column(db.String(20), nullable=True)
     contact_email = db.Column(db.String(120), nullable=True)
-    
-    # 状态流转
-    status = db.Column(db.String(20), default='submitted')
-    # submitted -> reviewing -> investigating -> verified -> closed/rewarded
-    
-    # 处理信息
-    assigned_to = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # 指派给哪位民警
-    handler_notes = db.Column(db.Text, nullable=True)  # 处理备注
-    handler_photos = db.Column(db.Text, default='[]')  # 处理过程照片
-    
-    # 时间戳
-    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    status = db.Column(db.String(20), default='submitted', index=True)
+
+    assigned_to = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+    handler_notes = db.Column(db.Text, nullable=True)
+    handler_photos = db.Column(db.Text, default='[]')
+
+    submitted_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     reviewed_at = db.Column(db.DateTime, nullable=True)
     completed_at = db.Column(db.DateTime, nullable=True)
-    
-    # 奖励信息
+
     reward_given = db.Column(db.Float, default=0)
     reward_points = db.Column(db.Integer, default=0)
-    
-    # 反馈评价
-    rating = db.Column(db.Integer, nullable=True)  # 1-5星评价
+
+    rating = db.Column(db.Integer, nullable=True)
     feedback = db.Column(db.Text, nullable=True)
-    
+
     handler = db.relationship('User', foreign_keys=[assigned_to])
-    
+
     def __init__(self, **kwargs):
         super(Clue, self).__init__(**kwargs)
         if not self.clue_no:
             self.clue_no = f"XS{datetime.now().strftime('%Y%m%d%H%M%S')}{str(uuid.uuid4())[:6].upper()}"
         if not self.anonymous_code:
             self.anonymous_code = str(uuid.uuid4())[:12].upper()
-    
+
     def __repr__(self):
         return f'<Clue {self.clue_no}>'
 
@@ -211,52 +222,40 @@ class Clue(db.Model):
 class Hazard(db.Model):
     """安全隐患表"""
     __tablename__ = 'hazards'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    
-    # 隐患编号
     hazard_no = db.Column(db.String(32), unique=True, index=True)
-    
-    # 上报人
-    reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    
-    # 隐患类型
-    hazard_type = db.Column(db.String(50))  # 消防通道堵塞、井盖缺失、路灯损坏等
-    
-    # 描述
+
+    reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+
+    hazard_type = db.Column(db.String(50), index=True)
     description = db.Column(db.Text)
-    
-    # 位置
+
     location = db.Column(db.String(256))
     lat = db.Column(db.Float)
     lng = db.Column(db.Float)
-    
-    # 照片
+
     photos = db.Column(db.Text, default='[]')
-    
-    # 状态
-    status = db.Column(db.String(20), default='pending')  # pending, processing, resolved, ignored
-    
-    # 处理信息
-    handler_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    status = db.Column(db.String(20), default='pending', index=True)
+
+    handler_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
     handle_notes = db.Column(db.Text, nullable=True)
     handle_photos = db.Column(db.Text, default='[]')
-    
-    # 时间戳
-    reported_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    reported_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     resolved_at = db.Column(db.DateTime, nullable=True)
-    
-    # 紧急程度
-    urgency = db.Column(db.String(20), default='normal')  # low, normal, high, urgent
-    
+
+    urgency = db.Column(db.String(20), default='normal', index=True)
+
     reporter = db.relationship('User', foreign_keys=[reporter_id])
     handler = db.relationship('User', foreign_keys=[handler_id])
-    
+
     def __init__(self, **kwargs):
         super(Hazard, self).__init__(**kwargs)
         if not self.hazard_no:
             self.hazard_no = f"YH{datetime.now().strftime('%Y%m%d%H%M%S')}{str(uuid.uuid4())[:6].upper()}"
-    
+
     def __repr__(self):
         return f'<Hazard {self.hazard_no}>'
 
@@ -265,55 +264,42 @@ class Hazard(db.Model):
 class Task(db.Model):
     """任务表"""
     __tablename__ = 'tasks'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    
-    # 任务编号
     task_no = db.Column(db.String(32), unique=True, index=True)
-    
-    # 任务标题和描述
+
     title = db.Column(db.String(128))
     description = db.Column(db.Text)
-    
-    # 任务类型
-    task_type = db.Column(db.String(50))  # patrol:巡逻, propaganda:宣传, emergency:应急, investigation:调查
-    
-    # 任务地点
+
+    task_type = db.Column(db.String(50), index=True)
+
     location = db.Column(db.String(256))
     lat = db.Column(db.Float, nullable=True)
     lng = db.Column(db.Float, nullable=True)
-    
-    # 任务范围（米）
+
     radius = db.Column(db.Integer, default=500)
-    
-    # 奖励
+
     reward_points = db.Column(db.Integer, default=0)
     reward_cash = db.Column(db.Float, default=0)
-    
-    # 时间
+
     start_time = db.Column(db.DateTime)
     end_time = db.Column(db.DateTime)
-    
-    # 需要人数
+
     required_people = db.Column(db.Integer, default=1)
-    
-    # 状态
-    status = db.Column(db.String(20), default='open')  # open, assigned, in_progress, completed, cancelled
-    
-    # 发布人
-    published_by = db.Column(db.Integer, db.ForeignKey('users.id'))
-    published_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # 关联
+
+    status = db.Column(db.String(20), default='open', index=True)
+
+    published_by = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
+    published_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
     assignments = db.relationship('TaskAssignment', backref='task', lazy='dynamic')
-    
     publisher = db.relationship('User', foreign_keys=[published_by])
-    
+
     def __init__(self, **kwargs):
         super(Task, self).__init__(**kwargs)
         if not self.task_no:
             self.task_no = f"RW{datetime.now().strftime('%Y%m%d%H%M%S')}{str(uuid.uuid4())[:6].upper()}"
-    
+
     def __repr__(self):
         return f'<Task {self.title}>'
 
@@ -322,35 +308,23 @@ class Task(db.Model):
 class TaskAssignment(db.Model):
     """任务分配表"""
     __tablename__ = 'task_assignments'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    
-    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'))
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    
-    # 状态
-    status = db.Column(db.String(20), default='assigned')  # assigned, in_progress, completed, cancelled
-    
-    # 接单时间
+    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
+
+    status = db.Column(db.String(20), default='assigned', index=True)
     assigned_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # 开始时间
     started_at = db.Column(db.DateTime, nullable=True)
-    
-    # 完成时间
     completed_at = db.Column(db.DateTime, nullable=True)
-    
-    # 完成证明（照片）
+
     proof_photos = db.Column(db.Text, default='[]')
-    
-    # 完成备注
     completion_notes = db.Column(db.Text, nullable=True)
-    
-    # 审核状态
+
     is_verified = db.Column(db.Boolean, default=False)
     verified_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     verified_at = db.Column(db.DateTime, nullable=True)
-    
+
     def __repr__(self):
         return f'<TaskAssignment {self.id}>'
 
@@ -359,31 +333,24 @@ class TaskAssignment(db.Model):
 class PatrolCheckin(db.Model):
     """巡逻打卡记录"""
     __tablename__ = 'patrol_checkins'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    
-    # 打卡位置
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
+
     lat = db.Column(db.Float)
     lng = db.Column(db.Float)
     location = db.Column(db.String(256))
-    
-    # 打卡照片
+
     photo = db.Column(db.String(256), nullable=True)
-    
-    # 备注
     notes = db.Column(db.Text, nullable=True)
-    
-    # 打卡时间
-    checkin_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # 是否异常
+
+    checkin_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
     is_abnormal = db.Column(db.Boolean, default=False)
     abnormal_reason = db.Column(db.String(256), nullable=True)
-    
+
     user = db.relationship('User', backref='patrol_checkins')
-    
+
     def __repr__(self):
         return f'<PatrolCheckin {self.id}>'
 
@@ -392,47 +359,32 @@ class PatrolCheckin(db.Model):
 class EmergencyDispatch(db.Model):
     """应急调度记录"""
     __tablename__ = 'emergency_dispatches'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    
-    # 事件标题
     title = db.Column(db.String(128))
-    
-    # 事件描述
     description = db.Column(db.Text)
-    
-    # 事件位置
+
     location = db.Column(db.String(256))
     lat = db.Column(db.Float)
     lng = db.Column(db.Float)
-    
-    # 事件类型
-    emergency_type = db.Column(db.String(50))  # 突发事件、群体性事件、自然灾害等
-    
-    # 紧急程度
-    urgency = db.Column(db.String(20), default='high')  # low, normal, high, urgent
-    
-    # 调度范围（米）
+
+    emergency_type = db.Column(db.String(50))
+    urgency = db.Column(db.String(20), default='high')
+
     dispatch_radius = db.Column(db.Integer, default=1000)
-    
-    # 状态
-    status = db.Column(db.String(20), default='dispatching')  # dispatching, responding, resolved, cancelled
-    
-    # 调度人
-    dispatched_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+
+    status = db.Column(db.String(20), default='dispatching', index=True)
+
+    dispatched_by = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
     dispatched_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # 响应人员（JSON数组）
+
     responders = db.Column(db.Text, default='[]')
-    
-    # 解决时间
+
     resolved_at = db.Column(db.DateTime, nullable=True)
-    
-    # 解决备注
     resolution_notes = db.Column(db.Text, nullable=True)
-    
+
     dispatcher = db.relationship('User', foreign_keys=[dispatched_by])
-    
+
     def __repr__(self):
         return f'<EmergencyDispatch {self.title}>'
 
@@ -441,30 +393,22 @@ class EmergencyDispatch(db.Model):
 class Announcement(db.Model):
     """公告表"""
     __tablename__ = 'announcements'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    
     title = db.Column(db.String(128))
     content = db.Column(db.Text)
-    
-    # 类型
-    category = db.Column(db.String(50), default='notice')  # notice:通知, news:新闻, safety:安全提示
-    
-    # 是否置顶
+
+    category = db.Column(db.String(50), default='notice', index=True)
     is_pinned = db.Column(db.Boolean, default=False)
-    
-    # 浏览量
     view_count = db.Column(db.Integer, default=0)
-    
-    # 发布人
-    published_by = db.Column(db.Integer, db.ForeignKey('users.id'))
-    published_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # 封面图
+
+    published_by = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
+    published_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
     cover_image = db.Column(db.String(256), nullable=True)
-    
+
     publisher = db.relationship('User', foreign_keys=[published_by])
-    
+
     def __repr__(self):
         return f'<Announcement {self.title}>'
 
@@ -473,26 +417,19 @@ class Announcement(db.Model):
 class RewardItem(db.Model):
     """积分兑换商品"""
     __tablename__ = 'reward_items'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    
     name = db.Column(db.String(128))
     description = db.Column(db.Text, nullable=True)
-    
-    # 所需积分
+
     required_points = db.Column(db.Integer)
-    
-    # 库存
     stock = db.Column(db.Integer, default=0)
-    
-    # 商品图片
+
     image = db.Column(db.String(256), nullable=True)
-    
-    # 是否上架
-    is_active = db.Column(db.Boolean, default=True)
-    
+
+    is_active = db.Column(db.Boolean, default=True, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __repr__(self):
         return f'<RewardItem {self.name}>'
 
@@ -501,35 +438,28 @@ class RewardItem(db.Model):
 class RewardClaim(db.Model):
     """积分兑换记录"""
     __tablename__ = 'reward_claims'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    item_id = db.Column(db.Integer, db.ForeignKey('reward_items.id'))
-    
-    # 兑换数量
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
+    item_id = db.Column(db.Integer, db.ForeignKey('reward_items.id'), index=True)
+
     quantity = db.Column(db.Integer, default=1)
-    
-    # 消耗积分
     points_spent = db.Column(db.Integer)
-    
-    # 状态
-    status = db.Column(db.String(20), default='pending')  # pending, shipped, completed, cancelled
-    
-    # 收货信息
+
+    status = db.Column(db.String(20), default='pending', index=True)
+
     receiver_name = db.Column(db.String(64), nullable=True)
     receiver_phone = db.Column(db.String(20), nullable=True)
     receiver_address = db.Column(db.String(256), nullable=True)
-    
-    # 物流信息
+
     tracking_no = db.Column(db.String(64), nullable=True)
-    
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     shipped_at = db.Column(db.DateTime, nullable=True)
     completed_at = db.Column(db.DateTime, nullable=True)
-    
+
     item = db.relationship('RewardItem')
-    
+
     def __repr__(self):
         return f'<RewardClaim {self.id}>'
 
@@ -538,14 +468,13 @@ class RewardClaim(db.Model):
 class SystemConfig(db.Model):
     """系统配置表"""
     __tablename__ = 'system_configs'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    
     key = db.Column(db.String(64), unique=True, index=True)
     value = db.Column(db.Text)
     description = db.Column(db.String(256), nullable=True)
-    
+
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     def __repr__(self):
         return f'<SystemConfig {self.key}>'
