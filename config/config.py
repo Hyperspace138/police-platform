@@ -39,7 +39,7 @@ class Config:
 
     # 高德地图API Key
     AMAP_KEY = os.environ.get('AMAP_KEY') or 'your-amap-key-here'
-    AMAP_SECURITY_CODE = os.environ.get('AMAP_SECURITY_CODE') or 'your-security-code-here'
+    AMAP_SECURITY_CODE = os.environ.get('AMAP_SECURITY_CODE', '')
 
     # 积分配置
     POINTS_CONFIG = {
