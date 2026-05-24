@@ -387,11 +387,19 @@ def api_claim_task(id):
     if task.status != 'open':
         return api_response(success=False, message='该任务已被抢完', code=400)
     
+    # 防刷分：检查每日抢单上限
+    daily_limit = current_app.config.get('TASK_CLAIM_DAILY_LIMIT', 10)
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_claims = TaskAssignment.query.filter_by(user_id=current_user.id)\
+        .filter(TaskAssignment.assigned_at >= today_start).count()
+    if today_claims >= daily_limit:
+        return api_response(success=False, message=f'今日抢单已达上限（{daily_limit}单），请明天再参与', code=400)
+
     existing = TaskAssignment.query.filter_by(
         task_id=id,
         user_id=current_user.id
     ).first()
-    
+
     if existing:
         return api_response(success=False, message='您已接过此任务', code=400)
     
@@ -455,29 +463,48 @@ def complete_task(id):
 @bp.route('/patrol/checkin', methods=['POST'])
 @login_required
 def api_patrol_checkin():
-    """API巡逻打卡"""
+    """API巡逻打卡（含防刷分检测）"""
     data = request.get_json()
-    
+    lat = data.get('lat')
+    lng = data.get('lng')
+
+    # 防刷分：检查是否在短时间内重复打卡
+    min_interval = current_app.config.get('PATROL_MIN_INTERVAL', 300)
+    min_distance = current_app.config.get('PATROL_MIN_DISTANCE', 100)
+
+    recent = PatrolCheckin.query.filter_by(user_id=current_user.id)\
+        .filter(PatrolCheckin.checkin_at >= datetime.utcnow() - timedelta(seconds=min_interval))\
+        .order_by(desc(PatrolCheckin.checkin_at)).first()
+
+    if recent and lat and lng and recent.lat and recent.lng:
+        # 计算距离（简化：欧几里得距离近似）
+        import math
+        dlat = (lat - recent.lat) * 111320  # 纬度转米
+        dlng = (lng - recent.lng) * 111320 * math.cos(math.radians(lat))
+        distance = math.sqrt(dlat**2 + dlng**2)
+        if distance < min_distance:
+            return api_response(success=False, message=f'打卡过于频繁，{min_interval // 60}分钟内请勿在同一位置重复打卡'), 429
+
     checkin = PatrolCheckin(
         user_id=current_user.id,
-        lat=data.get('lat'),
-        lng=data.get('lng'),
+        lat=lat,
+        lng=lng,
         location=data.get('location'),
         notes=data.get('notes', ''),
         photo=data.get('photo', '')
     )
-    
+
     db.session.add(checkin)
-    
+
     current_user.last_checkin = datetime.utcnow()
     current_user.is_on_duty = True
-    
+
     db.session.commit()
-    
+
     # 增加积分
     points = current_app.config['POINTS_CONFIG']['patrol_checkin']
     current_user.add_points(points, '巡逻打卡')
-    
+
     return api_response(data={'points_earned': points}, message='打卡成功')
 
 

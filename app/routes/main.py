@@ -298,6 +298,15 @@ def claim_task(id):
         flash('该任务已被抢完', 'warning')
         return redirect(url_for('main.task_detail', id=id))
 
+    # 防刷分：检查每日抢单上限
+    daily_limit = current_app.config.get('TASK_CLAIM_DAILY_LIMIT', 10)
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_claims = TaskAssignment.query.filter_by(user_id=current_user.id)\
+        .filter(TaskAssignment.assigned_at >= today_start).count()
+    if today_claims >= daily_limit:
+        flash(f'今日抢单已达上限（{daily_limit}单），请明天再参与', 'warning')
+        return redirect(url_for('main.tasks'))
+
     existing = TaskAssignment.query.filter_by(task_id=id, user_id=current_user.id).first()
     if existing:
         flash('您已接过此任务', 'warning')
@@ -324,6 +333,22 @@ def patrol_checkin():
     lng = request.form.get('lng', type=float)
     location = request.form.get('location')
     notes = request.form.get('notes', '')
+
+    # 防刷分：检查重复打卡
+    min_interval = current_app.config.get('PATROL_MIN_INTERVAL', 300)
+    min_distance = current_app.config.get('PATROL_MIN_DISTANCE', 100)
+
+    recent = PatrolCheckin.query.filter_by(user_id=current_user.id)\
+        .filter(PatrolCheckin.checkin_at >= datetime.utcnow() - timedelta(seconds=min_interval))\
+        .order_by(desc(PatrolCheckin.checkin_at)).first()
+
+    if recent and lat and lng and recent.lat and recent.lng:
+        import math
+        dlat = (lat - recent.lat) * 111320
+        dlng = (lng - recent.lng) * 111320 * math.cos(math.radians(lat))
+        distance = math.sqrt(dlat**2 + dlng**2)
+        if distance < min_distance:
+            return jsonify({'success': False, 'message': f'打卡过于频繁，{min_interval // 60}分钟内请勿在同一位置重复打卡'})
 
     checkin = PatrolCheckin(
         user_id=current_user.id, lat=lat, lng=lng,

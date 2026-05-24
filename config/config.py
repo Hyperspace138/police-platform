@@ -49,7 +49,15 @@ class Config:
         'patrol_checkin': 5,
         'emergency_response': 100,
         'register': 20,
+        'malicious_penalty': -20,  # 恶意举报扣分
     }
+
+    # 防刷分机制
+    PATROL_MIN_INTERVAL = 300  # 巡逻打卡最小间隔（秒），5分钟
+    PATROL_MIN_DISTANCE = 100  # 巡逻打卡最小距离（米），100米内视为重复
+    TASK_CLAIM_DAILY_LIMIT = 10  # 每日抢单上限
+    HAZARD_DUPLICATE_RADIUS = 50  # 隐患去重半径（米）
+    HAZARD_DUPLICATE_HOURS = 24  # 隐患去重时间窗口（小时）
 
     # 悬赏令状态
     REWARD_STATUS = {

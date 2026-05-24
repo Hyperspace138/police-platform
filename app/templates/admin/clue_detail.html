@@ -103,12 +103,11 @@
                                 {% endif %}
                             </div>
                             {% endif %}
-                            {% if clue.media_files and clue.media_files != '[]' %}
+                            {% if media_files %}
                             <div class="mb-3">
-                                <label class="text-muted small">附件</label>
+                                <label class="text-muted small">附件 ({{ media_files|length }})</label>
                                 <div class="d-flex flex-wrap gap-2">
-                                    {% set files = clue.media_files | tojson | safe if clue.media_files is string else clue.media_files %}
-                                    {% for file in clue.media_files|safe %}
+                                    {% for file in media_files %}
                                     <a href="{{ url_for('static', filename=file) }}" target="_blank" class="btn btn-outline-secondary btn-sm">
                                         <i class="bi bi-paperclip me-1"></i>附件 {{ loop.index }}
                                     </a>
@@ -209,6 +208,7 @@
                                         <option value="verify" {{ 'selected' if clue.status == 'investigating' else '' }}>确认核实</option>
                                         <option value="close" {{ 'selected' if clue.status == 'verified' else '' }}>办结核实</option>
                                         <option value="reward" {{ 'selected' if clue.status == 'closed' else '' }}>发放奖励</option>
+                                        <option value="penalize">标记恶意举报（扣分）</option>
                                     </select>
                                 </div>
                                 <div class="mb-3">

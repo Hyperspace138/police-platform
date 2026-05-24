@@ -14,6 +14,7 @@ from app.models import (
 from sqlalchemy import desc, func
 from datetime import datetime, timedelta
 import json
+import os
 import uuid
 
 bp = Blueprint('admin', __name__)
@@ -268,13 +269,25 @@ def admin_clues():
 def clue_detail(id):
     """线索详情"""
     clue = Clue.query.get_or_404(id)
-    
+
+    # 解析JSON附件列表
+    try:
+        media_files = json.loads(clue.media_files) if clue.media_files else []
+    except (json.JSONDecodeError, TypeError):
+        media_files = []
+    try:
+        handler_photos = json.loads(clue.handler_photos) if clue.handler_photos else []
+    except (json.JSONDecodeError, TypeError):
+        handler_photos = []
+
     # 获取所有民警用于指派
     police_users = User.query.filter_by(role='police').all()
-    
+
     return render_template('admin/clue_detail.html',
                          clue=clue,
-                         police_users=police_users)
+                         police_users=police_users,
+                         media_files=media_files,
+                         handler_photos=handler_photos)
 
 
 @bp.route('/clue/<int:id>/handle', methods=['POST'])
@@ -305,12 +318,23 @@ def handle_clue(id):
         clue.reward_given = request.form.get('reward_amount', 0, type=float)
         clue.reward_points = request.form.get('reward_points', 0, type=int)
         clue.completed_at = datetime.utcnow()
-        
+
         # 给举报人增加积分
         if clue.reporter_id:
             reporter = User.query.get(clue.reporter_id)
             if reporter:
                 reporter.add_points(clue.reward_points, '线索被采纳奖励')
+
+    elif action == 'penalize':
+        # 恶意举报惩罚
+        clue.status = 'closed'
+        clue.completed_at = datetime.utcnow()
+        penalty = current_app.config['POINTS_CONFIG'].get('malicious_penalty', -20)
+
+        if clue.reporter_id:
+            reporter = User.query.get(clue.reporter_id)
+            if reporter:
+                reporter.add_points(penalty, '恶意举报扣分惩罚')
     
     clue.handler_notes = notes
     db.session.commit()
@@ -403,33 +427,47 @@ def admin_tasks():
 def create_task():
     """创建任务"""
     if request.method == 'POST':
-        task = Task(
-            title=request.form.get('title'),
-            description=request.form.get('description'),
-            task_type=request.form.get('task_type'),
-            location=request.form.get('location'),
-            lat=request.form.get('lat', type=float),
-            lng=request.form.get('lng', type=float),
-            radius=request.form.get('radius', 500, type=int),
-            reward_points=request.form.get('reward_points', 0, type=int),
-            reward_cash=request.form.get('reward_cash', 0, type=float),
-            required_people=request.form.get('required_people', 1, type=int),
-            published_by=current_user.id
-        )
-        
-        # 处理时间
-        start_time = request.form.get('start_time')
-        end_time = request.form.get('end_time')
-        if start_time:
-            task.start_time = datetime.strptime(start_time, '%Y-%m-%dT%H:%M')
-        if end_time:
-            task.end_time = datetime.strptime(end_time, '%Y-%m-%dT%H:%M')
-        
-        db.session.add(task)
-        db.session.commit()
-        
-        flash('任务发布成功', 'success')
-        return redirect(url_for('admin.admin_tasks'))
+        try:
+            task = Task(
+                title=request.form.get('title'),
+                description=request.form.get('description'),
+                task_type=request.form.get('task_type'),
+                location=request.form.get('location'),
+                lat=request.form.get('lat', type=float),
+                lng=request.form.get('lng', type=float),
+                radius=request.form.get('radius', 500, type=int),
+                reward_points=request.form.get('reward_points', 0, type=int),
+                reward_cash=request.form.get('reward_cash', 0, type=float),
+                required_people=request.form.get('required_people', 1, type=int),
+                published_by=current_user.id
+            )
+
+            # 处理时间
+            start_time = request.form.get('start_time')
+            end_time = request.form.get('end_time')
+            if start_time:
+                try:
+                    task.start_time = datetime.strptime(start_time, '%Y-%m-%dT%H:%M')
+                except ValueError:
+                    flash('开始时间格式不正确', 'danger')
+                    return redirect(url_for('admin.create_task'))
+            if end_time:
+                try:
+                    task.end_time = datetime.strptime(end_time, '%Y-%m-%dT%H:%M')
+                except ValueError:
+                    flash('结束时间格式不正确', 'danger')
+                    return redirect(url_for('admin.create_task'))
+
+            db.session.add(task)
+            db.session.commit()
+
+            flash('任务发布成功', 'success')
+            return redirect(url_for('admin.admin_tasks'))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Task creation failed: {str(e)}')
+            flash(f'任务发布失败，请重试', 'danger')
+            return redirect(url_for('admin.create_task'))
     
     return render_template('admin/create_task.html',
                          amap_key=current_app.config['AMAP_KEY'])
